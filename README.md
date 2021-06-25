@@ -62,3 +62,11 @@ console.log(reader.sequenceLength());
 [jscdr](https://github.com/atolab/jscdr) - Does not support bigint, pre-allocated buffers, or buffer length calculations.
 
 ## License
+
+@foxglove/cdr is licensed under [MIT License](https://opensource.org/licenses/MIT).
+
+## Releasing
+
+1. Run `yarn version --[major|minor|patch]` to bump version
+2. Run `git push && git push --tags` to push new tag
+3. GitHub Actions will take care of the rest
