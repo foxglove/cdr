@@ -1,10 +1,11 @@
 import { CdrReader } from "./CdrReader";
 
+// Example tf2_msgs/TFMessage
+const tf2_msg__TFMessage =
+  "0001000001000000cce0d158f08cf9060a000000626173655f6c696e6b000000060000007261646172000000ae47e17a14ae0e4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f03f";
+
 describe("CdrReader", () => {
   it("parses an example message", () => {
-    // Example tf2_msgs/TFMessage
-    const tf2_msg__TFMessage =
-      "0001000001000000cce0d158f08cf9060a000000626173655f6c696e6b000000060000007261646172000000ae47e17a14ae0e4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f03f";
     const data = Uint8Array.from(Buffer.from(tf2_msg__TFMessage, "hex"));
     const reader = new CdrReader(data);
 
@@ -26,5 +27,21 @@ describe("CdrReader", () => {
     expect(reader.float64()).toBeCloseTo(0); // float64 y
     expect(reader.float64()).toBeCloseTo(0); // float64 z
     expect(reader.float64()).toBeCloseTo(1); // float64 w
+  });
+
+  it("seeks to absolute and relative positions", () => {
+    const data = Uint8Array.from(Buffer.from(tf2_msg__TFMessage, "hex"));
+    const reader = new CdrReader(data);
+
+    reader.seekTo(4 + 4 + 4 + 4 + 4 + 10 + 4 + 6);
+    expect(reader.float64()).toBeCloseTo(3.835);
+
+    // This works due to aligned reads
+    reader.seekTo(4 + 4 + 4 + 4 + 4 + 10 + 4 + 3);
+    expect(reader.float64()).toBeCloseTo(3.835);
+
+    reader.seek(-8);
+    expect(reader.float64()).toBeCloseTo(3.835);
+    expect(reader.float64()).toBeCloseTo(0);
   });
 });

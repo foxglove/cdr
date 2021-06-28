@@ -109,6 +109,31 @@ export class CdrReader {
     return this.uint32();
   }
 
+  /**
+   * Seek the current read pointer a number of bytes relative to the current position. Note that
+   * seeking before the four-byte header is invalid
+   * @param relativeOffset A positive or negative number of bytes to seek
+   */
+  seek(relativeOffset: number): void {
+    const newOffset = this.offset + relativeOffset;
+    if (newOffset < 4 || newOffset >= this.data.byteLength) {
+      throw new Error(`seek(${relativeOffset}) failed, ${newOffset} is outside the data range`);
+    }
+    this.offset = newOffset;
+  }
+
+  /**
+   * Seek to an absolute byte position in the data. Note that seeking before the four-byte header is
+   * invalid
+   * @param offset An absolute byte offset in the range of [4-byteLength)
+   */
+  seekTo(offset: number): void {
+    if (offset < 4 || offset >= this.data.byteLength) {
+      throw new Error(`seekTo(${offset}) failed, value is outside the data range`);
+    }
+    this.offset = offset;
+  }
+
   private align(size: number): void {
     const alignment = (this.offset - 4) % size;
     if (alignment > 0) {
