@@ -1,3 +1,5 @@
+import { isBigEndian } from "./isBigEndian";
+
 export type CdrWriterOpts = {
   buffer?: ArrayBuffer;
   size?: number;
@@ -6,8 +8,10 @@ export type CdrWriterOpts = {
 
 export class CdrWriter {
   static DEFAULT_CAPACITY = 16;
+  static BUFFER_COPY_THRESHOLD = 10;
 
   private littleEndian: boolean;
+  private hostLittleEndian: boolean;
   private buffer: ArrayBuffer;
   private array: Uint8Array;
   private view: DataView;
@@ -32,6 +36,7 @@ export class CdrWriter {
     }
 
     this.littleEndian = !(options.bigEndian === true);
+    this.hostLittleEndian = !isBigEndian();
     this.array = new Uint8Array(this.buffer);
     this.view = new DataView(this.buffer);
 
@@ -131,13 +136,194 @@ export class CdrWriter {
     return this.uint32(value);
   }
 
+  int8Array(value: Int8Array | number[], writeLength?: boolean): CdrWriter {
+    if (writeLength === true) {
+      this.sequenceLength(value.length);
+    }
+    this.resizeIfNeeded(value.length);
+    this.array.set(value, this.offset);
+    this.offset += value.length;
+    return this;
+  }
+
+  uint8Array(value: Uint8Array | number[], writeLength?: boolean): CdrWriter {
+    if (writeLength === true) {
+      this.sequenceLength(value.length);
+    }
+    this.resizeIfNeeded(value.length);
+    this.array.set(value, this.offset);
+    this.offset += value.length;
+    return this;
+  }
+
+  int16Array(value: Int16Array | number[], writeLength?: boolean): CdrWriter {
+    if (writeLength === true) {
+      this.sequenceLength(value.length);
+    }
+    if (
+      value instanceof Int16Array &&
+      this.littleEndian === this.hostLittleEndian &&
+      value.length >= CdrWriter.BUFFER_COPY_THRESHOLD
+    ) {
+      this.align(value.BYTES_PER_ELEMENT, value.byteLength);
+      this.array.set(new Uint8Array(value.buffer, value.byteOffset, value.byteLength), this.offset);
+      this.offset += value.byteLength;
+    } else {
+      for (const entry of value) {
+        this.int16(entry);
+      }
+    }
+    return this;
+  }
+
+  uint16Array(value: Uint16Array | number[], writeLength?: boolean): CdrWriter {
+    if (writeLength === true) {
+      this.sequenceLength(value.length);
+    }
+    if (
+      value instanceof Uint16Array &&
+      this.littleEndian === this.hostLittleEndian &&
+      value.length >= CdrWriter.BUFFER_COPY_THRESHOLD
+    ) {
+      this.align(value.BYTES_PER_ELEMENT, value.byteLength);
+      this.array.set(new Uint8Array(value.buffer, value.byteOffset, value.byteLength), this.offset);
+      this.offset += value.byteLength;
+    } else {
+      for (const entry of value) {
+        this.uint16(entry);
+      }
+    }
+    return this;
+  }
+
+  int32Array(value: Int32Array | number[], writeLength?: boolean): CdrWriter {
+    if (writeLength === true) {
+      this.sequenceLength(value.length);
+    }
+    if (
+      value instanceof Int32Array &&
+      this.littleEndian === this.hostLittleEndian &&
+      value.length >= CdrWriter.BUFFER_COPY_THRESHOLD
+    ) {
+      this.align(value.BYTES_PER_ELEMENT, value.byteLength);
+      this.array.set(new Uint8Array(value.buffer, value.byteOffset, value.byteLength), this.offset);
+      this.offset += value.byteLength;
+    } else {
+      for (const entry of value) {
+        this.int32(entry);
+      }
+    }
+    return this;
+  }
+
+  uint32Array(value: Uint32Array | number[], writeLength?: boolean): CdrWriter {
+    if (writeLength === true) {
+      this.sequenceLength(value.length);
+    }
+    if (
+      value instanceof Uint32Array &&
+      this.littleEndian === this.hostLittleEndian &&
+      value.length >= CdrWriter.BUFFER_COPY_THRESHOLD
+    ) {
+      this.align(value.BYTES_PER_ELEMENT, value.byteLength);
+      this.array.set(new Uint8Array(value.buffer, value.byteOffset, value.byteLength), this.offset);
+      this.offset += value.byteLength;
+    } else {
+      for (const entry of value) {
+        this.uint32(entry);
+      }
+    }
+    return this;
+  }
+
+  int64Array(value: BigInt64Array | bigint[] | number[], writeLength?: boolean): CdrWriter {
+    if (writeLength === true) {
+      this.sequenceLength(value.length);
+    }
+    if (
+      value instanceof BigInt64Array &&
+      this.littleEndian === this.hostLittleEndian &&
+      value.length >= CdrWriter.BUFFER_COPY_THRESHOLD
+    ) {
+      this.align(value.BYTES_PER_ELEMENT, value.byteLength);
+      this.array.set(new Uint8Array(value.buffer, value.byteOffset, value.byteLength), this.offset);
+      this.offset += value.byteLength;
+    } else {
+      for (const entry of value) {
+        this.int64(BigInt(entry));
+      }
+    }
+    return this;
+  }
+
+  uint64Array(value: BigUint64Array | bigint[] | number[], writeLength?: boolean): CdrWriter {
+    if (writeLength === true) {
+      this.sequenceLength(value.length);
+    }
+    if (
+      value instanceof BigUint64Array &&
+      this.littleEndian === this.hostLittleEndian &&
+      value.length >= CdrWriter.BUFFER_COPY_THRESHOLD
+    ) {
+      this.align(value.BYTES_PER_ELEMENT, value.byteLength);
+      this.array.set(new Uint8Array(value.buffer, value.byteOffset, value.byteLength), this.offset);
+      this.offset += value.byteLength;
+    } else {
+      for (const entry of value) {
+        this.uint64(BigInt(entry));
+      }
+    }
+    return this;
+  }
+
+  float32Array(value: Float32Array | number[], writeLength?: boolean): CdrWriter {
+    if (writeLength === true) {
+      this.sequenceLength(value.length);
+    }
+    if (
+      value instanceof Float32Array &&
+      this.littleEndian === this.hostLittleEndian &&
+      value.length >= CdrWriter.BUFFER_COPY_THRESHOLD
+    ) {
+      this.align(value.BYTES_PER_ELEMENT, value.byteLength);
+      this.array.set(new Uint8Array(value.buffer, value.byteOffset, value.byteLength), this.offset);
+      this.offset += value.byteLength;
+    } else {
+      for (const entry of value) {
+        this.float32(entry);
+      }
+    }
+    return this;
+  }
+
+  float64Array(value: Float64Array | number[], writeLength?: boolean): CdrWriter {
+    if (writeLength === true) {
+      this.sequenceLength(value.length);
+    }
+    if (
+      value instanceof Float64Array &&
+      this.littleEndian === this.hostLittleEndian &&
+      value.length >= CdrWriter.BUFFER_COPY_THRESHOLD
+    ) {
+      this.align(value.BYTES_PER_ELEMENT, value.byteLength);
+      this.array.set(new Uint8Array(value.buffer, value.byteOffset, value.byteLength), this.offset);
+      this.offset += value.byteLength;
+    } else {
+      for (const entry of value) {
+        this.float64(entry);
+      }
+    }
+    return this;
+  }
+
   // Calculate the capacity needed to hold the given number of aligned bytes,
   // resize if needed, and write padding bytes for alignment
-  private align(size: number): void {
+  private align(size: number, bytesToWrite?: number): void {
+    bytesToWrite ??= size;
     // The four byte header is not considered for alignment
     const alignment = (this.offset - 4) % size;
     const padding = alignment > 0 ? size - alignment : 0;
-    this.resizeIfNeeded(padding + size);
+    this.resizeIfNeeded(padding + bytesToWrite);
     // Write padding bytes
     this.array.fill(0, this.offset, this.offset + padding);
     this.offset += padding;

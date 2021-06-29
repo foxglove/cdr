@@ -81,4 +81,20 @@ describe("CdrWriter", () => {
     expect(reader.string()).toEqual("abc");
     expect(reader.sequenceLength()).toEqual(42);
   });
+
+  it("round trips all array types", () => {
+    const writer = new CdrWriter();
+    writer.int8Array([-128, 127, 3], true);
+    writer.uint8Array([0, 255, 3], true);
+    writer.int16Array([-32768, 32767, -3], true);
+    writer.uint16Array([0, 65535, 3], true);
+    writer.int32Array([-2147483648, 2147483647, 3], true);
+    writer.uint32Array([0, 4294967295, 3], true);
+    writer.int64Array([-9223372036854775808n, 9223372036854775807n, 3n], true);
+    writer.uint64Array([0n, 18446744073709551615n, 3n], true);
+
+    const reader = new CdrReader(writer.data);
+    expect(Array.from(reader.int8Array().values())).toEqual([-128, 127, 3]);
+    expect(Array.from(reader.uint8Array().values())).toEqual([0, 255, 3]);
+  });
 });
