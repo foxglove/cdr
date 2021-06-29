@@ -244,7 +244,9 @@ export class CdrReader {
       return this.typedArraySlow(TypedArrayConstructor, getter, count);
     } else if (totalOffset % TypedArrayConstructor.BYTES_PER_ELEMENT === 0) {
       // Fastest path
-      return new TypedArrayConstructor(this.data.buffer, totalOffset, count);
+      const array = new TypedArrayConstructor(this.data.buffer, totalOffset, count);
+      this.offset += TypedArrayConstructor.BYTES_PER_ELEMENT * count;
+      return array;
     } else {
       // Slower path
       return this.typedArrayUnaligned(TypedArrayConstructor, getter, count);

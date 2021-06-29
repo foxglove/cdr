@@ -99,6 +99,16 @@ describe("CdrReader", () => {
     expect(Array.from(array.values())).toEqual(expected);
   });
 
+  it("reads multiple arrays", () => {
+    const writer = new CdrWriter();
+    writer.float32Array([5.5, 6.5], true);
+    writer.float32Array([7.5, 8.5], true);
+
+    const reader = new CdrReader(writer.data);
+    expectToBeCloseToArray(Array.from(reader.float32Array().values()), [5.5, 6.5], 6);
+    expectToBeCloseToArray(Array.from(reader.float32Array().values()), [7.5, 8.5], 6);
+  });
+
   it("reads stringArray", () => {
     const writer = new CdrWriter();
     writer.sequenceLength(3);
