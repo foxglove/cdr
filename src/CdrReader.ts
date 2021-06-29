@@ -1,3 +1,5 @@
+import { isBigEndian } from "./isBigEndian";
+
 interface Indexable {
   [index: number]: unknown;
 }
@@ -134,47 +136,62 @@ export class CdrReader {
     return this.uint32();
   }
 
-  int8Array(count: number): Int8Array {
-    return new Int8Array(this.data.buffer, this.data.byteOffset + this.offset, count);
+  int8Array(count?: number): Int8Array {
+    count ??= this.sequenceLength();
+    const array = new Int8Array(this.data.buffer, this.data.byteOffset + this.offset, count);
+    this.offset += count;
+    return array;
   }
 
-  uint8Array(count: number): Uint8Array {
-    return new Uint8Array(this.data.buffer, this.data.byteOffset + this.offset, count);
+  uint8Array(count?: number): Uint8Array {
+    count ??= this.sequenceLength();
+    const array = new Uint8Array(this.data.buffer, this.data.byteOffset + this.offset, count);
+    this.offset += count;
+    return array;
   }
 
-  int16Array(count: number): Int16Array {
+  int16Array(count?: number): Int16Array {
+    count ??= this.sequenceLength();
     return this.typedArray(Int16Array, "getInt16", count);
   }
 
-  uint16Array(count: number): Uint16Array {
+  uint16Array(count?: number): Uint16Array {
+    count ??= this.sequenceLength();
     return this.typedArray(Uint16Array, "getUint16", count);
   }
 
-  int32Array(count: number): Int32Array {
+  int32Array(count?: number): Int32Array {
+    count ??= this.sequenceLength();
     return this.typedArray(Int32Array, "getInt32", count);
   }
 
-  uint32Array(count: number): Uint32Array {
+  uint32Array(count?: number): Uint32Array {
+    count ??= this.sequenceLength();
     return this.typedArray(Uint32Array, "getUint32", count);
   }
 
-  int64Array(count: number): BigInt64Array {
+  int64Array(count?: number): BigInt64Array {
+    count ??= this.sequenceLength();
     return this.typedArray(BigInt64Array, "getBigInt64", count);
   }
 
-  uint64Array(count: number): BigUint64Array {
+  uint64Array(count?: number): BigUint64Array {
+    count ??= this.sequenceLength();
     return this.typedArray(BigUint64Array, "getBigUint64", count);
   }
 
-  float32Array(count: number): Float32Array {
+  float32Array(count?: number): Float32Array {
+    count ??= this.sequenceLength();
     return this.typedArray(Float32Array, "getFloat32", count);
   }
 
-  float64Array(count: number): Float64Array {
+  float64Array(count?: number): Float64Array {
+    count ??= this.sequenceLength();
     return this.typedArray(Float64Array, "getFloat64", count);
   }
 
-  stringArray(count: number): string[] {
+  stringArray(count?: number): string[] {
+    count ??= this.sequenceLength();
     const output: string[] = [];
     for (let i = 0; i < count; i++) {
       output.push(this.string());
@@ -267,11 +284,4 @@ export class CdrReader {
     this.offset = offset;
     return array;
   }
-}
-
-const endianTestArray = new Uint8Array(4);
-const endianTestView = new Uint32Array(endianTestArray.buffer);
-endianTestView[0] = 1;
-function isBigEndian() {
-  return endianTestArray[3] === 1;
 }
