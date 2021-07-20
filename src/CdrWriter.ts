@@ -1,9 +1,10 @@
+import { EncapsulationKind } from "./encapsulationKind";
 import { isBigEndian } from "./isBigEndian";
 
 export type CdrWriterOpts = {
   buffer?: ArrayBuffer;
   size?: number;
-  bigEndian?: boolean;
+  kind?: EncapsulationKind;
 };
 
 export class CdrWriter {
@@ -35,16 +36,16 @@ export class CdrWriter {
       this.buffer = new ArrayBuffer(CdrWriter.DEFAULT_CAPACITY);
     }
 
-    this.littleEndian = !(options.bigEndian === true);
+    const kind = options.kind ?? EncapsulationKind.CDR_LE;
+    this.littleEndian = kind === EncapsulationKind.CDR_LE || kind === EncapsulationKind.PL_CDR_LE;
     this.hostLittleEndian = !isBigEndian();
     this.array = new Uint8Array(this.buffer);
     this.view = new DataView(this.buffer);
 
     // Write the Representation Id and Offset fields
     this.resizeIfNeeded(4);
-    // {0x00, 0x00} -- PLAIN_CDR, BIG_ENDIAN,
-    // {0x00, 0x01} -- PLAIN_CDR, LITTLE_ENDIAN
-    this.view.setUint16(0, this.littleEndian ? 1 : 0, false);
+    this.view.setUint8(0, 0); // Upper bits of EncapsulationKind, unused
+    this.view.setUint8(1, kind);
     // The RTPS specification does not define any settings for the 2 byte
     // options field and further states that a receiver should not interpret it
     // when it reads the options field
@@ -104,6 +105,27 @@ export class CdrWriter {
   uint64(value: bigint): CdrWriter {
     this.align(8);
     this.view.setBigUint64(this.offset, value, this.littleEndian);
+    this.offset += 8;
+    return this;
+  }
+
+  uint16BE(value: number): CdrWriter {
+    this.align(2);
+    this.view.setUint16(this.offset, value, false);
+    this.offset += 2;
+    return this;
+  }
+
+  uint32BE(value: number): CdrWriter {
+    this.align(4);
+    this.view.setUint32(this.offset, value, false);
+    this.offset += 4;
+    return this;
+  }
+
+  uint64BE(value: bigint): CdrWriter {
+    this.align(8);
+    this.view.setBigUint64(this.offset, value, false);
     this.offset += 8;
     return this;
   }

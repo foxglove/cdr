@@ -41,6 +41,14 @@ describe("CdrReader", () => {
     expect(reader.float64()).toBeCloseTo(1); // float64 w
   });
 
+  it("reads big endian values", () => {
+    const data = Uint8Array.from(Buffer.from("000100001234000056789abcdef0000000000000", "hex"));
+    const reader = new CdrReader(data);
+    expect(reader.uint16BE()).toEqual(0x1234);
+    expect(reader.uint32BE()).toEqual(0x56789abc);
+    expect(reader.uint64BE()).toEqual(0xdef0000000000000n);
+  });
+
   it("seeks to absolute and relative positions", () => {
     const data = Uint8Array.from(Buffer.from(tf2_msg__TFMessage, "hex"));
     const reader = new CdrReader(data);
