@@ -1,3 +1,4 @@
+import { EncapsulationKind } from "./encapsulationKind";
 import { isBigEndian } from "./isBigEndian";
 
 interface Indexable {
@@ -30,6 +31,10 @@ export class CdrReader {
   private hostLittleEndian: boolean;
   private textDecoder = new TextDecoder("utf8");
 
+  get kind(): EncapsulationKind {
+    return this.array[1] as EncapsulationKind;
+  }
+
   get data(): Uint8Array {
     return this.array;
   }
@@ -48,7 +53,8 @@ export class CdrReader {
     }
     this.array = data;
     this.view = new DataView(data.buffer, data.byteOffset, data.byteLength);
-    this.littleEndian = data[1] !== 0;
+    const kind = this.kind;
+    this.littleEndian = kind === EncapsulationKind.CDR_LE || kind === EncapsulationKind.PL_CDR_LE;
     this.offset = 4;
   }
 
@@ -102,6 +108,27 @@ export class CdrReader {
   uint64(): bigint {
     this.align(8);
     const value = this.view.getBigUint64(this.offset, this.littleEndian);
+    this.offset += 8;
+    return value;
+  }
+
+  uint16BE(): number {
+    this.align(2);
+    const value = this.view.getUint16(this.offset, false);
+    this.offset += 2;
+    return value;
+  }
+
+  uint32BE(): number {
+    this.align(4);
+    const value = this.view.getUint32(this.offset, false);
+    this.offset += 4;
+    return value;
+  }
+
+  uint64BE(): bigint {
+    this.align(8);
+    const value = this.view.getBigUint64(this.offset, false);
     this.offset += 8;
     return value;
   }
