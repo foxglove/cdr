@@ -136,62 +136,51 @@ export class CdrReader {
     return this.uint32();
   }
 
-  int8Array(count?: number): Int8Array {
-    count ??= this.sequenceLength();
+  int8Array(count: number = this.sequenceLength()): Int8Array {
     const array = new Int8Array(this.data.buffer, this.data.byteOffset + this.offset, count);
     this.offset += count;
     return array;
   }
 
-  uint8Array(count?: number): Uint8Array {
-    count ??= this.sequenceLength();
+  uint8Array(count: number = this.sequenceLength()): Uint8Array {
     const array = new Uint8Array(this.data.buffer, this.data.byteOffset + this.offset, count);
     this.offset += count;
     return array;
   }
 
-  int16Array(count?: number): Int16Array {
-    count ??= this.sequenceLength();
+  int16Array(count: number = this.sequenceLength()): Int16Array {
     return this.typedArray(Int16Array, "getInt16", count);
   }
 
-  uint16Array(count?: number): Uint16Array {
-    count ??= this.sequenceLength();
+  uint16Array(count: number = this.sequenceLength()): Uint16Array {
     return this.typedArray(Uint16Array, "getUint16", count);
   }
 
-  int32Array(count?: number): Int32Array {
-    count ??= this.sequenceLength();
+  int32Array(count: number = this.sequenceLength()): Int32Array {
     return this.typedArray(Int32Array, "getInt32", count);
   }
 
-  uint32Array(count?: number): Uint32Array {
-    count ??= this.sequenceLength();
+  uint32Array(count: number = this.sequenceLength()): Uint32Array {
     return this.typedArray(Uint32Array, "getUint32", count);
   }
 
-  int64Array(count?: number): BigInt64Array {
-    count ??= this.sequenceLength();
+  int64Array(count: number = this.sequenceLength()): BigInt64Array {
     return this.typedArray(BigInt64Array, "getBigInt64", count);
   }
 
-  uint64Array(count?: number): BigUint64Array {
-    count ??= this.sequenceLength();
+  uint64Array(count: number = this.sequenceLength()): BigUint64Array {
     return this.typedArray(BigUint64Array, "getBigUint64", count);
   }
 
-  float32Array(count?: number): Float32Array {
-    count ??= this.sequenceLength();
+  float32Array(count: number = this.sequenceLength()): Float32Array {
     return this.typedArray(Float32Array, "getFloat32", count);
   }
 
-  float64Array(count?: number): Float64Array {
-    count ??= this.sequenceLength();
+  float64Array(count: number = this.sequenceLength()): Float64Array {
     return this.typedArray(Float64Array, "getFloat64", count);
   }
 
-  stringArray(count?: number): string[] {
-    count ??= this.sequenceLength();
+  stringArray(count: number = this.sequenceLength()): string[] {
     const output: string[] = [];
     for (let i = 0; i < count; i++) {
       output.push(this.string());
