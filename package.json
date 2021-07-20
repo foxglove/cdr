@@ -1,6 +1,6 @@
 {
   "name": "@foxglove/cdr",
-  "version": "0.2.1",
+  "version": "1.0.0",
   "description": "Common Data Representation serialization and deserialization library",
   "license": "MIT",
   "keywords": [
