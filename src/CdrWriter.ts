@@ -318,8 +318,7 @@ export class CdrWriter {
 
   // Calculate the capacity needed to hold the given number of aligned bytes,
   // resize if needed, and write padding bytes for alignment
-  private align(size: number, bytesToWrite?: number): void {
-    bytesToWrite ??= size;
+  private align(size: number, bytesToWrite: number = size): void {
     // The four byte header is not considered for alignment
     const alignment = (this.offset - 4) % size;
     const padding = alignment > 0 ? size - alignment : 0;
