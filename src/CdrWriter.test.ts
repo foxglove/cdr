@@ -1,5 +1,6 @@
 import { CdrReader } from "./CdrReader";
 import { CdrWriter } from "./CdrWriter";
+import { EncapsulationKind } from "./encapsulationKind";
 
 const tf2_msg__TFMessage =
   "0001000001000000cce0d158f08cf9060a000000626173655f6c696e6b000000060000007261646172000000ae47e17a14ae0e4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f03f";
@@ -25,13 +26,17 @@ function writeExampleMessage(writer: CdrWriter) {
   writer.float64(1); // float64 w
 }
 
+function toHex(data: Uint8Array): string {
+  return Buffer.from(data).toString("hex");
+}
+
 describe("CdrWriter", () => {
   it("serializes an example message with size calculation", () => {
     // Example tf2_msgs/TFMessage
     const writer = new CdrWriter({ size: 100 });
     writeExampleMessage(writer);
     expect(writer.size).toEqual(100);
-    expect(Buffer.from(writer.data).toString("hex")).toEqual(tf2_msg__TFMessage);
+    expect(toHex(writer.data)).toEqual(tf2_msg__TFMessage);
   });
 
   it("serializes an example message with preallocation", () => {
@@ -39,7 +44,7 @@ describe("CdrWriter", () => {
     const writer = new CdrWriter({ buffer: new ArrayBuffer(100) });
     writeExampleMessage(writer);
     expect(writer.size).toEqual(100);
-    expect(Buffer.from(writer.data).toString("hex")).toEqual(tf2_msg__TFMessage);
+    expect(toHex(writer.data)).toEqual(tf2_msg__TFMessage);
   });
 
   it("serializes an example message with size calculation", () => {
@@ -47,7 +52,7 @@ describe("CdrWriter", () => {
     const writer = new CdrWriter();
     writeExampleMessage(writer);
     expect(writer.size).toEqual(100);
-    expect(Buffer.from(writer.data).toString("hex")).toEqual(tf2_msg__TFMessage);
+    expect(toHex(writer.data)).toEqual(tf2_msg__TFMessage);
   });
 
   it("round trips all data types", () => {
@@ -102,5 +107,24 @@ describe("CdrWriter", () => {
     const reader = new CdrReader(writer.data);
     expect(Array.from(reader.int8Array().values())).toEqual([-128, 127, 3]);
     expect(Array.from(reader.uint8Array().values())).toEqual([0, 255, 3]);
+  });
+
+  it("writes parameter lists", () => {
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
+    writer.uint8(0x42);
+    expect(toHex(writer.data)).toEqual("0003000042");
+  });
+
+  it("aligns", () => {
+    const writer = new CdrWriter();
+    writer.align(0);
+    expect(toHex(writer.data)).toEqual("00010000");
+    writer.align(8);
+    expect(toHex(writer.data)).toEqual("00010000");
+    writer.uint8(1); // one byte
+    writer.align(8); // seven bytes of padding
+    writer.uint32(2); // four bytes
+    writer.align(4); // no-op, already aligned
+    expect(toHex(writer.data)).toEqual("00010000010000000000000002000000");
   });
 });
