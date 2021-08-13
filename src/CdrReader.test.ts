@@ -17,7 +17,7 @@ const tf2_msg__TFMessage =
   "0001000001000000cce0d158f08cf9060a000000626173655f6c696e6b000000060000007261646172000000ae47e17a14ae0e4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f03f";
 
 describe("CdrReader", () => {
-  it("parses an example message", () => {
+  it("parses an example tf2_msgs/TFMessage message", () => {
     const data = Uint8Array.from(Buffer.from(tf2_msg__TFMessage, "hex"));
     const reader = new CdrReader(data);
 
@@ -39,6 +39,48 @@ describe("CdrReader", () => {
     expect(reader.float64()).toBeCloseTo(0); // float64 y
     expect(reader.float64()).toBeCloseTo(0); // float64 z
     expect(reader.float64()).toBeCloseTo(1); // float64 w
+
+    expect(reader.offset).toBe(data.length);
+  });
+
+  it("parses an example rcl_interfaces/ParameterEvent", () => {
+    const data = Uint8Array.from(
+      Buffer.from(
+        "00010000a9b71561a570ea01110000002f5f726f7332636c695f33373833363300000000010000000d0000007573655f73696d5f74696d650001000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000",
+        "hex",
+      ),
+    );
+    const reader = new CdrReader(data);
+
+    // builtin_interfaces/Time stamp
+    expect(reader.uint32()).toEqual(1628813225); // uint32 sec
+    expect(reader.uint32()).toEqual(32141477); // uint32 nsec
+    // string node
+    expect(reader.string()).toEqual("/_ros2cli_378363");
+
+    // Parameter[] new_parameters
+    expect(reader.sequenceLength()).toEqual(1);
+    expect(reader.string()).toEqual("use_sim_time"); // string name
+    // ParameterValue value
+    expect(reader.uint8()).toEqual(1); // uint8 type
+    expect(reader.int8()).toEqual(0); // bool bool_value
+    expect(reader.int64()).toEqual(0n); // int64 integer_value
+    expect(reader.float64()).toEqual(0); // float64 double_value
+    expect(reader.string()).toEqual(""); // string string_value
+
+    expect(reader.int8Array()).toEqual(new Int8Array()); // byte[] byte_array_value
+    expect(reader.uint8Array()).toEqual(new Uint8Array()); // bool[] bool_array_value
+    expect(reader.int64Array()).toEqual(new BigInt64Array()); // int64[] integer_array_value
+    expect(reader.float64Array()).toEqual(new Float64Array()); // float64[] double_array_value
+    expect(reader.stringArray()).toEqual([]); // string[] string_array_value
+
+    // Parameter[] changed_parameters
+    expect(reader.sequenceLength()).toEqual(0);
+
+    // Parameter[] deleted_parameters
+    expect(reader.sequenceLength()).toEqual(0);
+
+    expect(reader.offset).toBe(data.length);
   });
 
   it("reads big endian values", () => {
@@ -115,6 +157,7 @@ describe("CdrReader", () => {
     const reader = new CdrReader(writer.data);
     expectToBeCloseToArray(Array.from(reader.float32Array().values()), [5.5, 6.5], 6);
     expectToBeCloseToArray(Array.from(reader.float32Array().values()), [7.5, 8.5], 6);
+    expect(reader.offset).toBe(writer.data.length);
   });
 
   it("reads stringArray", () => {
@@ -126,6 +169,28 @@ describe("CdrReader", () => {
 
     const reader = new CdrReader(writer.data);
     expect(reader.stringArray(reader.sequenceLength())).toEqual(["abc", "", "test string"]);
+    expect(reader.offset).toBe(writer.data.length);
+  });
+
+  it.each([
+    "int8Array",
+    "uint8Array",
+    "int16Array",
+    "uint16Array",
+    "int32Array",
+    "uint32Array",
+    "int64Array",
+    "uint64Array",
+    "float32Array",
+    "float64Array",
+  ] as const)("handles alignment correctly for empty %s", (key) => {
+    const writer = new CdrWriter();
+    writer[key]([], true);
+    expect(writer.data.length).toBe(8);
+
+    const reader = new CdrReader(writer.data);
+    expect(reader[key]().length).toEqual(0);
+    expect(reader.offset).toEqual(writer.data.length);
   });
 });
 

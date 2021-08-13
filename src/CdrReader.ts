@@ -26,10 +26,11 @@ type ArrayValueGetter =
 export class CdrReader {
   private array: Uint8Array;
   private view: DataView;
-  private offset: number;
   private littleEndian: boolean;
   private hostLittleEndian: boolean;
   private textDecoder = new TextDecoder("utf8");
+
+  offset: number;
 
   get kind(): EncapsulationKind {
     return this.array[1] as EncapsulationKind;
@@ -253,6 +254,9 @@ export class CdrReader {
     getter: ArrayValueGetter,
     count: number,
   ) {
+    if (count === 0) {
+      return new TypedArrayConstructor();
+    }
     this.align(TypedArrayConstructor.BYTES_PER_ELEMENT);
     const totalOffset = this.data.byteOffset + this.offset;
     if (this.littleEndian !== this.hostLittleEndian) {
