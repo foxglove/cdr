@@ -14,5 +14,3 @@ overrides:
       - plugin:@foxglove/typescript
     parserOptions:
       project: ./tsconfig.json
-    rules:
-      "@foxglove/no-boolean-parameters": off
