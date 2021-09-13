@@ -4,11 +4,9 @@ env:
 ignorePatterns:
   - dist
 
-plugins:
-  - jest
-
 extends:
   - plugin:@foxglove/base
+  - plugin:@foxglove/jest
 
 overrides:
   - files: ["*.ts", "*.tsx"]
@@ -16,3 +14,5 @@ overrides:
       - plugin:@foxglove/typescript
     parserOptions:
       project: ./tsconfig.json
+    rules:
+      "@foxglove/no-boolean-parameters": off
