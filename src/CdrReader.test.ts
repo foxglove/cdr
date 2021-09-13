@@ -151,8 +151,8 @@ describe("CdrReader", () => {
 
   it("reads multiple arrays", () => {
     const writer = new CdrWriter();
-    writer.float32Array([5.5, 6.5], true);
-    writer.float32Array([7.5, 8.5], true);
+    writer.float32Array([5.5, 6.5], { writeLength: true });
+    writer.float32Array([7.5, 8.5], { writeLength: true });
 
     const reader = new CdrReader(writer.data);
     expect(reader).toBeDefined();
@@ -186,7 +186,7 @@ describe("CdrReader", () => {
     "float64Array",
   ] as const)("handles alignment correctly for empty %s", (key) => {
     const writer = new CdrWriter();
-    writer[key]([], true);
+    writer[key]([], { writeLength: true });
     expect(writer.data.length).toBe(8);
 
     const reader = new CdrReader(writer.data);
