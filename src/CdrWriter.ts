@@ -160,7 +160,7 @@ export class CdrWriter {
 
   int8Array(
     value: Int8Array | number[],
-    { writeLength = false }: { writeLength?: boolean },
+    { writeLength = false }: { writeLength?: boolean } = {},
   ): CdrWriter {
     if (writeLength) {
       this.sequenceLength(value.length);
@@ -173,7 +173,7 @@ export class CdrWriter {
 
   uint8Array(
     value: Uint8Array | number[],
-    { writeLength = false }: { writeLength?: boolean },
+    { writeLength = false }: { writeLength?: boolean } = {},
   ): CdrWriter {
     if (writeLength) {
       this.sequenceLength(value.length);
@@ -186,7 +186,7 @@ export class CdrWriter {
 
   int16Array(
     value: Int16Array | number[],
-    { writeLength = false }: { writeLength?: boolean },
+    { writeLength = false }: { writeLength?: boolean } = {},
   ): CdrWriter {
     if (writeLength) {
       this.sequenceLength(value.length);
@@ -209,7 +209,7 @@ export class CdrWriter {
 
   uint16Array(
     value: Uint16Array | number[],
-    { writeLength = false }: { writeLength?: boolean },
+    { writeLength = false }: { writeLength?: boolean } = {},
   ): CdrWriter {
     if (writeLength) {
       this.sequenceLength(value.length);
@@ -232,7 +232,7 @@ export class CdrWriter {
 
   int32Array(
     value: Int32Array | number[],
-    { writeLength = false }: { writeLength?: boolean },
+    { writeLength = false }: { writeLength?: boolean } = {},
   ): CdrWriter {
     if (writeLength) {
       this.sequenceLength(value.length);
@@ -255,7 +255,7 @@ export class CdrWriter {
 
   uint32Array(
     value: Uint32Array | number[],
-    { writeLength = false }: { writeLength?: boolean },
+    { writeLength = false }: { writeLength?: boolean } = {},
   ): CdrWriter {
     if (writeLength) {
       this.sequenceLength(value.length);
@@ -278,7 +278,7 @@ export class CdrWriter {
 
   int64Array(
     value: BigInt64Array | bigint[] | number[],
-    { writeLength = false }: { writeLength?: boolean },
+    { writeLength = false }: { writeLength?: boolean } = {},
   ): CdrWriter {
     if (writeLength) {
       this.sequenceLength(value.length);
@@ -301,7 +301,7 @@ export class CdrWriter {
 
   uint64Array(
     value: BigUint64Array | bigint[] | number[],
-    { writeLength = false }: { writeLength?: boolean },
+    { writeLength = false }: { writeLength?: boolean } = {},
   ): CdrWriter {
     if (writeLength) {
       this.sequenceLength(value.length);
@@ -324,7 +324,7 @@ export class CdrWriter {
 
   float32Array(
     value: Float32Array | number[],
-    { writeLength = false }: { writeLength?: boolean },
+    { writeLength = false }: { writeLength?: boolean } = {},
   ): CdrWriter {
     if (writeLength) {
       this.sequenceLength(value.length);
@@ -347,7 +347,7 @@ export class CdrWriter {
 
   float64Array(
     value: Float64Array | number[],
-    { writeLength = false }: { writeLength?: boolean },
+    { writeLength = false }: { writeLength?: boolean } = {},
   ): CdrWriter {
     if (writeLength) {
       this.sequenceLength(value.length);
