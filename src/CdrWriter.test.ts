@@ -31,7 +31,7 @@ function toHex(data: Uint8Array): string {
 }
 
 describe("CdrWriter", () => {
-  it("serializes an example message with size calculation", () => {
+  it("serializes an example message with internal preallocation", () => {
     // Example tf2_msgs/TFMessage
     const writer = new CdrWriter({ size: 100 });
     writeExampleMessage(writer);
@@ -39,7 +39,7 @@ describe("CdrWriter", () => {
     expect(toHex(writer.data)).toEqual(tf2_msg__TFMessage);
   });
 
-  it("serializes an example message with preallocation", () => {
+  it("serializes an example message with external preallocation", () => {
     // Example tf2_msgs/TFMessage
     const writer = new CdrWriter({ buffer: new ArrayBuffer(100) });
     writeExampleMessage(writer);
@@ -47,7 +47,7 @@ describe("CdrWriter", () => {
     expect(toHex(writer.data)).toEqual(tf2_msg__TFMessage);
   });
 
-  it("serializes an example message with size calculation", () => {
+  it("serializes an example message with no preallocation", () => {
     // Example tf2_msgs/TFMessage
     const writer = new CdrWriter();
     writeExampleMessage(writer);

@@ -114,7 +114,7 @@ describe("CdrReader", () => {
     ["uint16Array", "uint16", [0, 65535, 3]],
     ["int32Array", "int32", [-2147483648, 2147483647, 3]],
     ["uint32Array", "uint32", [0, 4294967295, 3]],
-  ])("reads %s", (getter: string, setter: string, expected: number[]) => {
+  ])("reads int %s", (getter: string, setter: string, expected: number[]) => {
     const writer = new CdrWriter();
     writeArray(writer, setter as Setter, expected);
 
@@ -127,7 +127,7 @@ describe("CdrReader", () => {
     ["float32Array", "float32", [-3.835, 0, Math.PI], 6],
     ["float64Array", "float64", [-3.835, 0, Math.PI], 15],
     ["float64Array", "float64", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, -0.123456789121212121212], 15],
-  ])("reads %s", (getter: string, setter: string, expected: number[], numDigits: number) => {
+  ])("reads float %s", (getter: string, setter: string, expected: number[], numDigits: number) => {
     const writer = new CdrWriter();
     writeArray(writer, setter as Setter, expected);
 
@@ -155,6 +155,7 @@ describe("CdrReader", () => {
     writer.float32Array([7.5, 8.5], true);
 
     const reader = new CdrReader(writer.data);
+    expect(reader).toBeDefined();
     expectToBeCloseToArray(Array.from(reader.float32Array().values()), [5.5, 6.5], 6);
     expectToBeCloseToArray(Array.from(reader.float32Array().values()), [7.5, 8.5], 6);
     expect(reader.offset).toBe(writer.data.length);
