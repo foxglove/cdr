@@ -24,7 +24,6 @@ type ArrayValueGetter =
   | "getFloat64";
 
 export class CdrReader {
-  private array: Uint8Array;
   private view: DataView;
   private littleEndian: boolean;
   private hostLittleEndian: boolean;
@@ -33,18 +32,14 @@ export class CdrReader {
   offset: number;
 
   get kind(): EncapsulationKind {
-    return this.array[1] as EncapsulationKind;
-  }
-
-  get data(): Uint8Array {
-    return this.array;
+    return this.view.getUint8(1) as EncapsulationKind;
   }
 
   get decodedBytes(): number {
     return this.offset;
   }
 
-  constructor(data: Uint8Array) {
+  constructor(data: ArrayBufferView) {
     this.hostLittleEndian = !isBigEndian();
 
     if (data.byteLength < 4) {
@@ -52,7 +47,6 @@ export class CdrReader {
         `Invalid CDR data size ${data.byteLength}, must contain at least a 4-byte header`,
       );
     }
-    this.array = data;
     this.view = new DataView(data.buffer, data.byteOffset, data.byteLength);
     const kind = this.kind;
     this.littleEndian = kind === EncapsulationKind.CDR_LE || kind === EncapsulationKind.PL_CDR_LE;
@@ -154,7 +148,7 @@ export class CdrReader {
       this.offset += length;
       return "";
     }
-    const data = new Uint8Array(this.array.buffer, this.array.byteOffset + this.offset, length - 1);
+    const data = new Uint8Array(this.view.buffer, this.view.byteOffset + this.offset, length - 1);
     const value = this.textDecoder.decode(data);
     this.offset += length;
     return value;
@@ -165,13 +159,13 @@ export class CdrReader {
   }
 
   int8Array(count: number = this.sequenceLength()): Int8Array {
-    const array = new Int8Array(this.data.buffer, this.data.byteOffset + this.offset, count);
+    const array = new Int8Array(this.view.buffer, this.view.byteOffset + this.offset, count);
     this.offset += count;
     return array;
   }
 
   uint8Array(count: number = this.sequenceLength()): Uint8Array {
-    const array = new Uint8Array(this.data.buffer, this.data.byteOffset + this.offset, count);
+    const array = new Uint8Array(this.view.buffer, this.view.byteOffset + this.offset, count);
     this.offset += count;
     return array;
   }
@@ -223,7 +217,7 @@ export class CdrReader {
    */
   seek(relativeOffset: number): void {
     const newOffset = this.offset + relativeOffset;
-    if (newOffset < 4 || newOffset >= this.data.byteLength) {
+    if (newOffset < 4 || newOffset >= this.view.byteLength) {
       throw new Error(`seek(${relativeOffset}) failed, ${newOffset} is outside the data range`);
     }
     this.offset = newOffset;
@@ -235,7 +229,7 @@ export class CdrReader {
    * @param offset An absolute byte offset in the range of [4-byteLength)
    */
   seekTo(offset: number): void {
-    if (offset < 4 || offset >= this.data.byteLength) {
+    if (offset < 4 || offset >= this.view.byteLength) {
       throw new Error(`seekTo(${offset}) failed, value is outside the data range`);
     }
     this.offset = offset;
@@ -258,13 +252,13 @@ export class CdrReader {
       return new TypedArrayConstructor();
     }
     this.align(TypedArrayConstructor.BYTES_PER_ELEMENT);
-    const totalOffset = this.data.byteOffset + this.offset;
+    const totalOffset = this.view.byteOffset + this.offset;
     if (this.littleEndian !== this.hostLittleEndian) {
       // Slowest path
       return this.typedArraySlow(TypedArrayConstructor, getter, count);
     } else if (totalOffset % TypedArrayConstructor.BYTES_PER_ELEMENT === 0) {
       // Fastest path
-      const array = new TypedArrayConstructor(this.data.buffer, totalOffset, count);
+      const array = new TypedArrayConstructor(this.view.buffer, totalOffset, count);
       this.offset += TypedArrayConstructor.BYTES_PER_ELEMENT * count;
       return array;
     } else {
