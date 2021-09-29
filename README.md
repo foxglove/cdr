@@ -2,6 +2,8 @@
 
 > _Common Data Representation serialization and deserialization library_
 
+[![npm version](https://img.shields.io/npm/v/@foxglove/cdr.svg?style=flat)](https://www.npmjs.com/package/@foxglove/cdr)
+
 ## Introduction
 
 Common Data Representation (CDR) defines a serialization format for primitive types. When combined with an Interface Definition Language (IDL) it can be used to create complex types that can be serialized to disk, transmitted over the network, etc. while transparently handling endianness and alignment requirements. It's specified by https://www.omg.org/spec/DDSI-RTPS/2.3/PDF (chapter 10) and https://www.omg.org/cgi-bin/doc?formal/02-06-51.
