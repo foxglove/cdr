@@ -1,3 +1,4 @@
+import { EncapsulationKind } from ".";
 import { CdrReader } from "./CdrReader";
 import { CdrWriter } from "./CdrWriter";
 
@@ -20,6 +21,7 @@ describe("CdrReader", () => {
   it("parses an example tf2_msgs/TFMessage message", () => {
     const data = Uint8Array.from(Buffer.from(tf2_msg__TFMessage, "hex"));
     const reader = new CdrReader(data);
+    expect(reader.decodedBytes).toBe(4);
 
     // geometry_msgs/TransformStamped[] transforms
     expect(reader.sequenceLength()).toEqual(1);
@@ -41,6 +43,9 @@ describe("CdrReader", () => {
     expect(reader.float64()).toBeCloseTo(1); // float64 w
 
     expect(reader.offset).toBe(data.length);
+    expect(reader.kind).toBe(EncapsulationKind.CDR_LE);
+    expect(reader.decodedBytes).toBe(data.length);
+    expect(reader.byteLength).toBe(data.length);
   });
 
   it("parses an example rcl_interfaces/ParameterEvent", () => {
