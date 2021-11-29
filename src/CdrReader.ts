@@ -39,6 +39,10 @@ export class CdrReader {
     return this.offset;
   }
 
+  get byteLength(): number {
+    return this.view.byteLength;
+  }
+
   constructor(data: ArrayBufferView) {
     this.hostLittleEndian = !isBigEndian();
 
