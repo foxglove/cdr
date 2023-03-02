@@ -65,7 +65,7 @@ console.log(reader.sequenceLength());
 
 ## License
 
-@foxglove/cdr is licensed under [MIT License](https://opensource.org/licenses/MIT).
+@foxglove/cdr is licensed under the [MIT License](https://opensource.org/licenses/MIT).
 
 ## Releasing
 
