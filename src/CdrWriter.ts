@@ -13,6 +13,7 @@ export class CdrWriter {
 
   private littleEndian: boolean;
   private hostLittleEndian: boolean;
+  private eightByteAlignment: number; // Alignment for 64-bit values, 4 on CDR2 8 on CDR1
   private buffer: ArrayBuffer;
   private array: Uint8Array;
   private view: DataView;
@@ -27,6 +28,10 @@ export class CdrWriter {
     return this.offset;
   }
 
+  get kind(): EncapsulationKind {
+    return this.view.getUint8(1) as EncapsulationKind;
+  }
+
   constructor(options: CdrWriterOpts = {}) {
     if (options.buffer != undefined) {
       this.buffer = options.buffer;
@@ -37,8 +42,15 @@ export class CdrWriter {
     }
 
     const kind = options.kind ?? EncapsulationKind.CDR_LE;
-    this.littleEndian = kind === EncapsulationKind.CDR_LE || kind === EncapsulationKind.PL_CDR_LE;
+    const isCDR2 = kind >= EncapsulationKind.CDR2_BE;
+    this.littleEndian =
+      kind === EncapsulationKind.CDR_LE ||
+      kind === EncapsulationKind.PL_CDR_LE ||
+      kind === EncapsulationKind.CDR2_LE ||
+      kind === EncapsulationKind.PL_CDR2_LE ||
+      kind === EncapsulationKind.DELIMITED_CDR2_LE;
     this.hostLittleEndian = !isBigEndian();
+    this.eightByteAlignment = isCDR2 ? 4 : 8;
     this.array = new Uint8Array(this.buffer);
     this.view = new DataView(this.buffer);
 
@@ -96,14 +108,14 @@ export class CdrWriter {
   }
 
   int64(value: bigint): CdrWriter {
-    this.align(8);
+    this.align(this.eightByteAlignment, 8);
     this.view.setBigInt64(this.offset, value, this.littleEndian);
     this.offset += 8;
     return this;
   }
 
   uint64(value: bigint): CdrWriter {
-    this.align(8);
+    this.align(this.eightByteAlignment, 8);
     this.view.setBigUint64(this.offset, value, this.littleEndian);
     this.offset += 8;
     return this;
@@ -124,7 +136,7 @@ export class CdrWriter {
   }
 
   uint64BE(value: bigint): CdrWriter {
-    this.align(8);
+    this.align(this.eightByteAlignment, 8);
     this.view.setBigUint64(this.offset, value, false);
     this.offset += 8;
     return this;
@@ -138,7 +150,7 @@ export class CdrWriter {
   }
 
   float64(value: number): CdrWriter {
-    this.align(8);
+    this.align(this.eightByteAlignment, 8);
     this.view.setFloat64(this.offset, value, this.littleEndian);
     this.offset += 8;
     return this;
