@@ -1,6 +1,6 @@
 import { CdrReader } from "./CdrReader";
 import { CdrWriter } from "./CdrWriter";
-import { EncapsulationKind } from "./encapsulationKind";
+import { EncapsulationKind } from "./EncapsulationKind";
 
 const tf2_msg__TFMessage =
   "0001000001000000cce0d158f08cf9060a000000626173655f6c696e6b000000060000007261646172000000ae47e17a14ae0e4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f03f";

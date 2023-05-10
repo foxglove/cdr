@@ -1,4 +1,4 @@
-import { EncapsulationKind } from "./encapsulationKind";
+import { EncapsulationKind } from "./EncapsulationKind";
 import { isBigEndian } from "./isBigEndian";
 
 interface Indexable {

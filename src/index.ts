@@ -1,4 +1,4 @@
 export * from "./CdrReader";
 export * from "./CdrSizeCalculator";
 export * from "./CdrWriter";
-export * from "./encapsulationKind";
+export * from "./EncapsulationKind";
