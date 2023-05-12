@@ -34,6 +34,16 @@ function decimalToHex(value: number): string {
   return value.toString(16).padStart(2, "0");
 }
 
+const CDR2EncapsulationKinds = new Set<EncapsulationKind>([
+  EncapsulationKind.CDR2_BE,
+  EncapsulationKind.CDR2_LE,
+  EncapsulationKind.PL_CDR2_BE,
+  EncapsulationKind.PL_CDR2_LE,
+  EncapsulationKind.DELIMITED_CDR2_BE,
+  EncapsulationKind.DELIMITED_CDR2_LE,
+]);
+const AllCdrWriterKinds: (keyof typeof EncapsulationKind)[] = enumKeys(EncapsulationKind);
+
 describe("CdrWriter", () => {
   it("serializes an example message with internal preallocation", () => {
     // Example tf2_msgs/TFMessage
@@ -71,66 +81,65 @@ describe("CdrWriter", () => {
     expect(toHex(writer.data)).toEqual(tf2_msg__TFMessage);
   });
 
-  it("round trips all data types", () => {
-    for (const writer of [new CdrWriter(), new CdrWriter({ kind: EncapsulationKind.CDR2_LE })]) {
-      writer.int8(-1);
-      writer.uint8(2);
-      writer.int16(-300);
-      writer.uint16(400);
-      writer.int32(-500_000);
-      writer.uint32(600_000);
-      writer.int64(-7_000_000_001n);
-      writer.uint64(8_000_000_003n);
-      writer.uint16BE(0x1234);
-      writer.uint32BE(0x12345678);
-      writer.uint64BE(0x123456789abcdef0n);
-      writer.float32(-9.14);
-      writer.float64(1.7976931348623158e100);
-      writer.string("abc");
-      writer.sequenceLength(42);
-      const data = writer.data;
-      expect(data.byteLength).toEqual(writer.kind === EncapsulationKind.CDR2_LE ? 76 : 80);
+  it.each(AllCdrWriterKinds)("round trips all data types: {kind: %s}", (kindKey) => {
+    const writer = new CdrWriter({ kind: EncapsulationKind[kindKey] });
+    writer.int8(-1);
+    writer.uint8(2);
+    writer.int16(-300);
+    writer.uint16(400);
+    writer.int32(-500_000);
+    writer.uint32(600_000);
+    writer.int64(-7_000_000_001n);
+    writer.uint64(8_000_000_003n);
+    writer.uint16BE(0x1234);
+    writer.uint32BE(0x12345678);
+    writer.uint64BE(0x123456789abcdef0n);
+    writer.float32(-9.14);
+    writer.float64(1.7976931348623158e100);
+    writer.string("abc");
+    writer.sequenceLength(42);
+    const data = writer.data;
+    expect(data.byteLength).toEqual(CDR2EncapsulationKinds.has(writer.kind) ? 76 : 80);
 
-      const reader = new CdrReader(data);
-      expect(reader.int8()).toEqual(-1);
-      expect(reader.uint8()).toEqual(2);
-      expect(reader.int16()).toEqual(-300);
-      expect(reader.uint16()).toEqual(400);
-      expect(reader.int32()).toEqual(-500_000);
-      expect(reader.uint32()).toEqual(600_000);
-      expect(reader.int64()).toEqual(-7_000_000_001n);
-      expect(reader.uint64()).toEqual(8_000_000_003n);
-      expect(reader.uint16BE()).toEqual(0x1234);
-      expect(reader.uint32BE()).toEqual(0x12345678);
-      expect(reader.uint64BE()).toEqual(0x123456789abcdef0n);
-      expect(reader.float32()).toBeCloseTo(-9.14);
-      expect(reader.float64()).toBeCloseTo(1.7976931348623158e100);
-      expect(reader.string()).toEqual("abc");
-      expect(reader.sequenceLength()).toEqual(42);
-    }
+    const reader = new CdrReader(data);
+    expect(reader.int8()).toEqual(-1);
+    expect(reader.uint8()).toEqual(2);
+    expect(reader.int16()).toEqual(-300);
+    expect(reader.uint16()).toEqual(400);
+    expect(reader.int32()).toEqual(-500_000);
+    expect(reader.uint32()).toEqual(600_000);
+    expect(reader.int64()).toEqual(-7_000_000_001n);
+    expect(reader.uint64()).toEqual(8_000_000_003n);
+    expect(reader.uint16BE()).toEqual(0x1234);
+    expect(reader.uint32BE()).toEqual(0x12345678);
+    expect(reader.uint64BE()).toEqual(0x123456789abcdef0n);
+    expect(reader.float32()).toBeCloseTo(-9.14);
+    expect(reader.float64()).toBeCloseTo(1.7976931348623158e100);
+    expect(reader.string()).toEqual("abc");
+    expect(reader.sequenceLength()).toEqual(42);
   });
 
-  it("round trips all array types", () => {
-    for (const writer of [new CdrWriter(), new CdrWriter({ kind: EncapsulationKind.CDR2_LE })]) {
-      writer.int8Array([-128, 127, 3], true);
-      writer.uint8Array([0, 255, 3], true);
-      writer.int16Array([-32768, 32767, -3], true);
-      writer.uint16Array([0, 65535, 3], true);
-      writer.int32Array([-2147483648, 2147483647, 3], true);
-      writer.uint32Array([0, 4294967295, 3], true);
-      writer.int64Array([-9223372036854775808n, 9223372036854775807n, 3n], true);
-      writer.uint64Array([0n, 18446744073709551615n, 3n], true);
+  it.each(AllCdrWriterKinds)("round trips all array types: {kind: %s}", (kindKey) => {
+    const writer = new CdrWriter({ kind: EncapsulationKind[kindKey] });
 
-      const reader = new CdrReader(writer.data);
-      expect(Array.from(reader.int8Array().values())).toEqual([-128, 127, 3]);
-      expect(Array.from(reader.uint8Array().values())).toEqual([0, 255, 3]);
-      expect(Array.from(reader.int16Array().values())).toEqual([-32768, 32767, -3]);
-      expect(Array.from(reader.uint16Array().values())).toEqual([0, 65535, 3]);
-      expect(Array.from(reader.int32Array().values())).toEqual([-2147483648, 2147483647, 3]);
-      expect(Array.from(reader.uint32Array().values())).toEqual([0, 4294967295, 3]);
-      expect(Array.from(reader.int64Array().values())).toEqual([-9223372036854775808n, 9223372036854775807n, 3n]); // prettier-ignore
-      expect(Array.from(reader.uint64Array().values())).toEqual([0n, 18446744073709551615n, 3n]);
-    }
+    writer.int8Array([-128, 127, 3], true);
+    writer.uint8Array([0, 255, 3], true);
+    writer.int16Array([-32768, 32767, -3], true);
+    writer.uint16Array([0, 65535, 3], true);
+    writer.int32Array([-2147483648, 2147483647, 3], true);
+    writer.uint32Array([0, 4294967295, 3], true);
+    writer.int64Array([-9223372036854775808n, 9223372036854775807n, 3n], true);
+    writer.uint64Array([0n, 18446744073709551615n, 3n], true);
+
+    const reader = new CdrReader(writer.data);
+    expect(Array.from(reader.int8Array().values())).toEqual([-128, 127, 3]);
+    expect(Array.from(reader.uint8Array().values())).toEqual([0, 255, 3]);
+    expect(Array.from(reader.int16Array().values())).toEqual([-32768, 32767, -3]);
+    expect(Array.from(reader.uint16Array().values())).toEqual([0, 65535, 3]);
+    expect(Array.from(reader.int32Array().values())).toEqual([-2147483648, 2147483647, 3]);
+    expect(Array.from(reader.uint32Array().values())).toEqual([0, 4294967295, 3]);
+    expect(Array.from(reader.int64Array().values())).toEqual([-9223372036854775808n, 9223372036854775807n, 3n]); // prettier-ignore
+    expect(Array.from(reader.uint64Array().values())).toEqual([0n, 18446744073709551615n, 3n]);
   });
 
   it("writes parameter lists", () => {
