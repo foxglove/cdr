@@ -1,4 +1,4 @@
-import { EncapsulationKind } from "./encapsulationKind";
+import { EncapsulationKind } from "./EncapsulationKind";
 import { isBigEndian } from "./isBigEndian";
 
 interface Indexable {
@@ -27,6 +27,7 @@ export class CdrReader {
   private view: DataView;
   private littleEndian: boolean;
   private hostLittleEndian: boolean;
+  private eightByteAlignment: number; // Alignment for 64-bit values, 4 on CDR2 8 on CDR1
   private textDecoder = new TextDecoder("utf8");
 
   offset: number;
@@ -44,8 +45,6 @@ export class CdrReader {
   }
 
   constructor(data: ArrayBufferView) {
-    this.hostLittleEndian = !isBigEndian();
-
     if (data.byteLength < 4) {
       throw new Error(
         `Invalid CDR data size ${data.byteLength}, must contain at least a 4-byte header`,
@@ -53,7 +52,15 @@ export class CdrReader {
     }
     this.view = new DataView(data.buffer, data.byteOffset, data.byteLength);
     const kind = this.kind;
-    this.littleEndian = kind === EncapsulationKind.CDR_LE || kind === EncapsulationKind.PL_CDR_LE;
+    const isCDR2 = kind >= EncapsulationKind.CDR2_BE;
+    this.littleEndian =
+      kind === EncapsulationKind.CDR_LE ||
+      kind === EncapsulationKind.PL_CDR_LE ||
+      kind === EncapsulationKind.CDR2_LE ||
+      kind === EncapsulationKind.PL_CDR2_LE ||
+      kind === EncapsulationKind.DELIMITED_CDR2_LE;
+    this.hostLittleEndian = !isBigEndian();
+    this.eightByteAlignment = isCDR2 ? 4 : 8;
     this.offset = 4;
   }
 
@@ -98,14 +105,14 @@ export class CdrReader {
   }
 
   int64(): bigint {
-    this.align(8);
+    this.align(this.eightByteAlignment);
     const value = this.view.getBigInt64(this.offset, this.littleEndian);
     this.offset += 8;
     return value;
   }
 
   uint64(): bigint {
-    this.align(8);
+    this.align(this.eightByteAlignment);
     const value = this.view.getBigUint64(this.offset, this.littleEndian);
     this.offset += 8;
     return value;
@@ -126,7 +133,7 @@ export class CdrReader {
   }
 
   uint64BE(): bigint {
-    this.align(8);
+    this.align(this.eightByteAlignment);
     const value = this.view.getBigUint64(this.offset, false);
     this.offset += 8;
     return value;
@@ -140,7 +147,7 @@ export class CdrReader {
   }
 
   float64(): number {
-    this.align(8);
+    this.align(this.eightByteAlignment);
     const value = this.view.getFloat64(this.offset, this.littleEndian);
     this.offset += 8;
     return value;
@@ -191,11 +198,11 @@ export class CdrReader {
   }
 
   int64Array(count: number = this.sequenceLength()): BigInt64Array {
-    return this.typedArray(BigInt64Array, "getBigInt64", count);
+    return this.typedArray(BigInt64Array, "getBigInt64", count, this.eightByteAlignment);
   }
 
   uint64Array(count: number = this.sequenceLength()): BigUint64Array {
-    return this.typedArray(BigUint64Array, "getBigUint64", count);
+    return this.typedArray(BigUint64Array, "getBigUint64", count, this.eightByteAlignment);
   }
 
   float32Array(count: number = this.sequenceLength()): Float32Array {
@@ -203,7 +210,7 @@ export class CdrReader {
   }
 
   float64Array(count: number = this.sequenceLength()): Float64Array {
-    return this.typedArray(Float64Array, "getFloat64", count);
+    return this.typedArray(Float64Array, "getFloat64", count, this.eightByteAlignment);
   }
 
   stringArray(count: number = this.sequenceLength()): string[] {
@@ -251,11 +258,12 @@ export class CdrReader {
     TypedArrayConstructor: TypedArrayConstructor<T>,
     getter: ArrayValueGetter,
     count: number,
+    alignment = TypedArrayConstructor.BYTES_PER_ELEMENT, // Expected CDR padding bytes
   ) {
     if (count === 0) {
       return new TypedArrayConstructor();
     }
-    this.align(TypedArrayConstructor.BYTES_PER_ELEMENT);
+    this.align(alignment);
     const totalOffset = this.view.byteOffset + this.offset;
     if (this.littleEndian !== this.hostLittleEndian) {
       // Slowest path
