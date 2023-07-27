@@ -186,7 +186,9 @@ export class CdrReader {
     const eFlag = (header & 0x80000000) !== 0;
     // We don't support changing the endianness mid stream, mostly because we don't have data to test it with
     if (eFlag !== this.littleEndian) {
-      throw new Error("Endianness mismatch");
+      throw new Error(
+        "Dheader contained an endianness flag that did not match the stream. This is not supported at this time.",
+      );
     }
 
     const objectSize = header & 0x7fffffff;
