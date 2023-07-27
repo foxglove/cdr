@@ -32,8 +32,8 @@ export class CdrReader {
   private textDecoder = new TextDecoder("utf8");
 
   // Need to be public for higher level serializers to use
-  usesDelimiterHeader: boolean;
-  usesMemberHeader: boolean;
+  readonly usesDelimiterHeader: boolean;
+  readonly usesMemberHeader: boolean;
 
   offset: number;
 
@@ -227,10 +227,10 @@ export class CdrReader {
         return 4;
       case 3:
         return 8;
-      // NEXTINT exists after header
+      // LC > 3 -> NEXTINT exists after header
       case 4:
-        return this.uint32();
       case 5:
+        // both 4 and 5 just read the next uint32
         return this.uint32();
       case 6:
         return 2 * this.uint32();
