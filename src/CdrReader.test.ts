@@ -198,6 +198,45 @@ describe("CdrReader", () => {
     expect(reader[key]().length).toEqual(0);
     expect(reader.offset).toEqual(writer.data.length);
   });
+  it.each([[1], [2], [4], [8], [0x7fffffff]])(
+    "round trips DHEADER values of size %d",
+    (objectSize) => {
+      const writer = new CdrWriter({ kind: EncapsulationKind.DELIMITED_CDR2_LE });
+
+      writer.dHeader(objectSize);
+
+      const reader = new CdrReader(writer.data);
+      expect(reader.dHeader()).toEqual({
+        objectSize,
+        eFlag: true, // little endian;
+      });
+    },
+  );
+
+  it.each([
+    [true, 100, 1],
+    [false, 200, 2],
+    [false, 1028, 4],
+    [false, 65, 8],
+    [true, 63, 9],
+    [false, 127, 0xffffffff],
+  ])(
+    "round trips EMHEADER values with mustUnderstand: %d, id: %d, and size: %d",
+    (mustUnderstand: boolean, id: number, objectSize: number) => {
+      const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR2_LE });
+
+      writer.emHeader(mustUnderstand, id, objectSize);
+
+      const reader = new CdrReader(writer.data);
+      const header = reader.emHeader();
+
+      expect(header).toEqual({
+        objectSize,
+        id,
+        mustUnderstand,
+      });
+    },
+  );
 });
 
 function writeArray(writer: CdrWriter, setter: Setter, array: number[]): void {

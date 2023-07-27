@@ -1,4 +1,5 @@
 import { EncapsulationKind } from "./EncapsulationKind";
+import { getEncapsulationKindInfo } from "./getEncapsulationKindInfo";
 import { isBigEndian } from "./isBigEndian";
 
 export type CdrWriterOpts = {
@@ -42,13 +43,9 @@ export class CdrWriter {
     }
 
     const kind = options.kind ?? EncapsulationKind.CDR_LE;
-    const isCDR2 = kind >= EncapsulationKind.CDR2_BE;
-    this.littleEndian =
-      kind === EncapsulationKind.CDR_LE ||
-      kind === EncapsulationKind.PL_CDR_LE ||
-      kind === EncapsulationKind.CDR2_LE ||
-      kind === EncapsulationKind.PL_CDR2_LE ||
-      kind === EncapsulationKind.DELIMITED_CDR2_LE;
+
+    const { isCDR2, littleEndian } = getEncapsulationKindInfo(kind);
+    this.littleEndian = littleEndian;
     this.hostLittleEndian = !isBigEndian();
     this.eightByteAlignment = isCDR2 ? 4 : 8;
     this.array = new Uint8Array(this.buffer);
@@ -163,6 +160,83 @@ export class CdrWriter {
     this.textEncoder.encodeInto(value, new Uint8Array(this.buffer, this.offset, strlen));
     this.view.setUint8(this.offset + strlen, 0);
     this.offset += strlen + 1;
+    return this;
+  }
+
+  /** Writes the delimiter header returning the endianness flag and object size
+   * NOTE: changing endian-ness with a single CDR message is not supported
+   */
+  dHeader(objectSize: number, eFlag: boolean = this.littleEndian): CdrWriter {
+    // DHEADER(O) = (E_FLAG<< 31) + O.ssize
+
+    if (objectSize < 1) {
+      throw new Error("Object size must be positive integer for DHEADER");
+    }
+    /**
+     * E = 1 indicates that following the header XCDR stream
+     * endianness shall be changed to LITTLE_ENDIAN.
+     * E = 0 indicates that following the header XCDR stream
+     * endianness shall be changed to BIG_ENDIAN.
+     */
+    // We don't support changing the endianness mid stream, mostly because we don't have data to test it with
+    if (eFlag !== this.littleEndian) {
+      throw new Error("We don't support endianness changing mid-stream");
+    }
+
+    const flag = eFlag ? 1 << 31 : 0;
+
+    const header = flag | objectSize;
+    this.uint32(header);
+
+    return this;
+  }
+
+  /**
+   * Reads the member header (EMHEADER) and returns the member ID, mustUnderstand flag, and object size
+   */
+  emHeader(mustUnderstand: boolean, id: number, objectSize: number): CdrWriter {
+    if (id > 0x0fffffff) {
+      // first byte is used for M_FLAG and LC
+      throw Error(`Member ID ${id} is too large. Max value is ${0x0fffffff}`);
+    }
+    // EMHEADER = (M_FLAG<<31) + (LC<<28) + M.id
+    // M is the member of a structure
+    // M_FLAG is the value of the Must Understand option for the member
+    const mustUnderstandFlag = mustUnderstand ? 1 << 31 : 0;
+    // LC is the value of the Length Code for the member.
+    let lengthCode: number | undefined;
+    switch (objectSize) {
+      case 1:
+        lengthCode = 0;
+        break;
+      case 2:
+        lengthCode = 1;
+        break;
+      case 4:
+        lengthCode = 2;
+        break;
+      case 8:
+        lengthCode = 3;
+        break;
+    }
+
+    if (lengthCode == undefined) {
+      // Not currently supporting writing of lengthCodes > 4
+      if (objectSize > 0xffffffff) {
+        throw Error(`Object size ${objectSize} for EMHEADER too large. Max size is ${0xfffffffff}`);
+      }
+      lengthCode = 4;
+    }
+
+    const header = mustUnderstandFlag | (lengthCode << 28) | id;
+
+    this.uint32(header);
+
+    // When the length code is > 3 the header is 8 bytes because of the NEXTINT value storing the object size
+    if (lengthCode >= 4) {
+      this.uint32(objectSize);
+    }
+
     return this;
   }
 

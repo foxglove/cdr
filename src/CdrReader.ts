@@ -1,4 +1,5 @@
 import { EncapsulationKind } from "./EncapsulationKind";
+import { getEncapsulationKindInfo } from "./getEncapsulationKindInfo";
 import { isBigEndian } from "./isBigEndian";
 
 interface Indexable {
@@ -30,6 +31,10 @@ export class CdrReader {
   private eightByteAlignment: number; // Alignment for 64-bit values, 4 on CDR2 8 on CDR1
   private textDecoder = new TextDecoder("utf8");
 
+  // Need to be public for higher level serializers to use
+  usesDelimiterHeader: boolean;
+  usesMemberHeader: boolean;
+
   offset: number;
 
   get kind(): EncapsulationKind {
@@ -52,13 +57,14 @@ export class CdrReader {
     }
     this.view = new DataView(data.buffer, data.byteOffset, data.byteLength);
     const kind = this.kind;
-    const isCDR2 = kind >= EncapsulationKind.CDR2_BE;
-    this.littleEndian =
-      kind === EncapsulationKind.CDR_LE ||
-      kind === EncapsulationKind.PL_CDR_LE ||
-      kind === EncapsulationKind.CDR2_LE ||
-      kind === EncapsulationKind.PL_CDR2_LE ||
-      kind === EncapsulationKind.DELIMITED_CDR2_LE;
+
+    const { isCDR2, littleEndian, usesDelimiterHeader, usesMemberHeader } =
+      getEncapsulationKindInfo(kind);
+
+    this.usesDelimiterHeader = usesDelimiterHeader;
+    this.usesMemberHeader = usesMemberHeader;
+
+    this.littleEndian = littleEndian;
     this.hostLittleEndian = !isBigEndian();
     this.eightByteAlignment = isCDR2 ? 4 : 8;
     this.offset = 4;
@@ -163,6 +169,76 @@ export class CdrReader {
     const value = this.textDecoder.decode(data);
     this.offset += length;
     return value;
+  }
+
+  /** Reads the delimiter header returning the endianness flag and object size
+   * NOTE: changing endian-ness with a single CDR message is not supported
+   */
+  dHeader(): { eFlag: boolean; objectSize: number } {
+    const header = this.uint32();
+    // DHEADER(O) = (E_FLAG<< 31) + O.ssize
+    /**
+     * E = 1 indicates that following the header XCDR stream
+     * endianness shall be changed to LITTLE_ENDIAN.
+     * E = 0 indicates that following the header XCDR stream
+     * endianness shall be changed to BIG_ENDIAN.
+     */
+    const eFlag = (header & 0x80000000) !== 0;
+    // We don't support changing the endianness mid stream, mostly because we don't have data to test it with
+    if (eFlag !== this.littleEndian) {
+      throw new Error("Endianness mismatch");
+    }
+
+    const objectSize = header & 0x7fffffff;
+    return { eFlag, objectSize };
+  }
+
+  /**
+   * Reads the member header (EMHEADER) and returns the member ID, mustUnderstand flag, and object size
+   */
+  emHeader(): { mustUnderstand: boolean; id: number; objectSize: number } {
+    const header = this.uint32();
+    // EMHEADER = (M_FLAG<<31) + (LC<<28) + M.id
+    // M is the member of a structure
+    // M_FLAG is the value of the Must Understand option for the member
+    const mustUnderstand = Math.abs((header & 0x80000000) >> 31) === 1;
+    // LC is the value of the Length Code for the member.
+    const lengthCode = (header & 0x70000000) >> 28;
+    const id = header & 0x0fffffff;
+
+    const objectSize = this.emHeaderObjectSize(lengthCode);
+
+    return { mustUnderstand, id, objectSize };
+  }
+
+  /** Uses the length code to derive the member object size in
+   * the EMHEADER, sometimes reading NEXTINT (the next uint32
+   * following the header) from the buffer */
+  private emHeaderObjectSize(lengthCode: number) {
+    // 7.4.3.4.2 Member Header (EMHEADER), Length Code (LC) and NEXTINT
+    switch (lengthCode) {
+      case 0:
+        return 1;
+      case 1:
+        return 2;
+      case 2:
+        return 4;
+      case 3:
+        return 8;
+      // NEXTINT exists after header
+      case 4:
+        return this.uint32();
+      case 5:
+        return this.uint32();
+      case 6:
+        return 2 * this.uint32();
+      case 7:
+        return 4 * this.uint32();
+      default:
+        throw new Error(
+          `Invalid length code ${lengthCode} in EMHEADER at offset ${this.offset - 4}`,
+        );
+    }
   }
 
   sequenceLength(): number {
