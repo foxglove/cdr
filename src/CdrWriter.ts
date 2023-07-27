@@ -166,7 +166,7 @@ export class CdrWriter {
   /** Writes the delimiter header returning the endianness flag and object size
    * NOTE: changing endian-ness with a single CDR message is not supported
    */
-  dHeader(objectSize: number, eFlag: boolean = this.littleEndian): CdrWriter {
+  dHeader(objectSize: number, littleEndianFlag: boolean = this.littleEndian): CdrWriter {
     // DHEADER(O) = (E_FLAG<< 31) + O.ssize
 
     if (objectSize < 1) {
@@ -179,11 +179,11 @@ export class CdrWriter {
      * endianness shall be changed to BIG_ENDIAN.
      */
     // We don't support changing the endianness mid stream, mostly because we don't have data to test it with
-    if (eFlag !== this.littleEndian) {
+    if (littleEndianFlag !== this.littleEndian) {
       throw new Error("We don't support endianness changing mid-stream");
     }
 
-    const flag = eFlag ? 1 << 31 : 0;
+    const flag = littleEndianFlag ? 1 << 31 : 0;
 
     const header = flag | objectSize;
     this.uint32(header);

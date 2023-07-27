@@ -174,7 +174,7 @@ export class CdrReader {
   /** Reads the delimiter header returning the endianness flag and object size
    * NOTE: changing endian-ness with a single CDR message is not supported
    */
-  dHeader(): { eFlag: boolean; objectSize: number } {
+  dHeader(): { littleEndianFlag: boolean; objectSize: number } {
     const header = this.uint32();
     // DHEADER(O) = (E_FLAG<< 31) + O.ssize
     /**
@@ -183,16 +183,16 @@ export class CdrReader {
      * E = 0 indicates that following the header XCDR stream
      * endianness shall be changed to BIG_ENDIAN.
      */
-    const eFlag = (header & 0x80000000) !== 0;
+    const littleEndianFlag = (header & 0x80000000) !== 0;
     // We don't support changing the endianness mid stream, mostly because we don't have data to test it with
-    if (eFlag !== this.littleEndian) {
+    if (littleEndianFlag !== this.littleEndian) {
       throw new Error(
         "Dheader contained an endianness flag that did not match the stream. This is not supported at this time.",
       );
     }
 
     const objectSize = header & 0x7fffffff;
-    return { eFlag, objectSize };
+    return { littleEndianFlag, objectSize };
   }
 
   /**
