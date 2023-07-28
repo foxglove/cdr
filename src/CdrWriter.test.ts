@@ -41,6 +41,12 @@ const CDR2EncapsulationKinds = new Set<EncapsulationKind>([
   EncapsulationKind.PL_CDR2_LE,
   EncapsulationKind.DELIMITED_CDR2_BE,
   EncapsulationKind.DELIMITED_CDR2_LE,
+  EncapsulationKind.RTPS_CDR2_BE,
+  EncapsulationKind.RTPS_CDR2_LE,
+  EncapsulationKind.RTPS_PL_CDR2_BE,
+  EncapsulationKind.RTPS_PL_CDR2_LE,
+  EncapsulationKind.RTPS_DELIMITED_CDR2_BE,
+  EncapsulationKind.RTPS_DELIMITED_CDR2_LE,
 ]);
 const AllCdrWriterKinds: (keyof typeof EncapsulationKind)[] = enumKeys(EncapsulationKind);
 
@@ -171,7 +177,7 @@ describe("CdrWriter", () => {
   });
 
   it("aligns cdr2", () => {
-    const writer = new CdrWriter({ kind: EncapsulationKind.CDR2_LE });
+    const writer = new CdrWriter({ kind: EncapsulationKind.RTPS_PL_CDR2_LE });
     writer.align(0);
     expect(toHex(writer.data)).toEqual("000b0000");
     writer.align(4);
