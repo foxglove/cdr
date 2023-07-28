@@ -166,9 +166,10 @@ export class CdrWriter {
   /** Writes the delimiter header returning the endianness flag and object size
    * NOTE: changing endian-ness with a single CDR message is not supported
    */
-  dHeader(objectSize: number, littleEndianFlag: boolean = this.littleEndian): CdrWriter {
+  dHeader(objectSize: number): CdrWriter {
+    // We don't support changing the endianness mid-stream, mostly because we don't have data to test it with
+    const littleEndianFlag = this.littleEndian;
     // DHEADER(O) = (E_FLAG<< 31) + O.ssize
-
     if (objectSize < 1) {
       throw new Error("Object size must be positive integer for DHEADER");
     }
@@ -178,10 +179,6 @@ export class CdrWriter {
      * E = 0 indicates that following the header XCDR stream
      * endianness shall be changed to BIG_ENDIAN.
      */
-    // We don't support changing the endianness mid stream, mostly because we don't have data to test it with
-    if (littleEndianFlag !== this.littleEndian) {
-      throw new Error("We don't support endianness changing mid-stream");
-    }
 
     const flag = littleEndianFlag ? 1 << 31 : 0;
 
@@ -192,7 +189,7 @@ export class CdrWriter {
   }
 
   /**
-   * Reads the member header (EMHEADER) and returns the member ID, mustUnderstand flag, and object size
+   * Writes the member header (EMHEADER): mustUnderstand flag, the member ID, and object size
    */
   emHeader(mustUnderstand: boolean, id: number, objectSize: number): CdrWriter {
     if (id > 0x0fffffff) {
