@@ -153,9 +153,12 @@ export class CdrWriter {
     return this;
   }
 
-  string(value: string): CdrWriter {
+  // writeLength optional because it could already be included in a header
+  string(value: string, writeLength = true): CdrWriter {
     const strlen = value.length;
-    this.uint32(strlen + 1); // Add one for the null terminator
+    if (writeLength) {
+      this.uint32(strlen + 1); // Add one for the null terminator
+    }
     this.resizeIfNeeded(strlen + 1);
     this.textEncoder.encodeInto(value, new Uint8Array(this.buffer, this.offset, strlen));
     this.view.setUint8(this.offset + strlen, 0);
