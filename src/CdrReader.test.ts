@@ -198,6 +198,16 @@ describe("CdrReader", () => {
     expect(reader[key]().length).toEqual(0);
     expect(reader.offset).toEqual(writer.data.length);
   });
+
+  it("takes a length when reading a string and doesn't read the sequence length again", () => {
+    const writer = new CdrWriter();
+    const testString = "test";
+    writer.string(testString);
+
+    const reader = new CdrReader(writer.data);
+    const length = reader.sequenceLength();
+    expect(reader.string(length)).toEqual("test");
+  });
   it.each([[1], [2], [4], [8], [0x7fffffff]])(
     "round trips DHEADER values of size %d",
     (objectSize) => {
