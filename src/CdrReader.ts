@@ -159,8 +159,8 @@ export class CdrReader {
     return value;
   }
 
-  string(): string {
-    const length = this.uint32();
+  string(prereadLength?: number): string {
+    const length = prereadLength ?? this.uint32();
     if (length <= 1) {
       this.offset += length;
       return "";
@@ -171,28 +171,10 @@ export class CdrReader {
     return value;
   }
 
-  /** Reads the delimiter header returning the endianness flag and object size
-   * NOTE: changing endian-ness with a single CDR message is not supported
-   */
-  dHeader(): { littleEndianFlag: boolean; objectSize: number } {
+  /** Reads the delimiter header which contains and returns the object size */
+  dHeader(): number {
     const header = this.uint32();
-    // DHEADER(O) = (E_FLAG<< 31) + O.ssize
-    /**
-     * E = 1 indicates that following the header XCDR stream
-     * endianness shall be changed to LITTLE_ENDIAN.
-     * E = 0 indicates that following the header XCDR stream
-     * endianness shall be changed to BIG_ENDIAN.
-     */
-    const littleEndianFlag = (header & 0x80000000) !== 0;
-    // We don't support changing the endianness mid stream, mostly because we don't have data to test it with
-    if (littleEndianFlag !== this.littleEndian) {
-      throw new Error(
-        "Dheader contained an endianness flag that did not match the stream. This is not supported at this time.",
-      );
-    }
-
-    const objectSize = header & 0x7fffffff;
-    return { littleEndianFlag, objectSize };
+    return header;
   }
 
   /**
@@ -233,9 +215,9 @@ export class CdrReader {
         // both 4 and 5 just read the next uint32
         return this.uint32();
       case 6:
-        return 2 * this.uint32();
-      case 7:
         return 4 * this.uint32();
+      case 7:
+        return 8 * this.uint32();
       default:
         throw new Error(
           `Invalid length code ${lengthCode} in EMHEADER at offset ${this.offset - 4}`,

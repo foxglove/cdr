@@ -8,6 +8,8 @@
 
 Common Data Representation (CDR) defines a serialization format for primitive types. When combined with an Interface Definition Language (IDL) it can be used to create complex types that can be serialized to disk, transmitted over the network, etc. while transparently handling endianness and alignment requirements. It's specified by https://www.omg.org/spec/DDSI-RTPS/2.3/PDF (chapter 10) and https://www.omg.org/cgi-bin/doc?formal/02-06-51.
 
+XCDR implementation follows [DDS-XTypes V1.3 specification](https://www.omg.org/spec/DDS-XTypes/1.3/PDF).
+
 CDR is found in OMG DDS (Data Distributed Service) implementations such as the Real-Time Publish Subscribe (RTPS) protocol. This is the wire protocol found in ROS2, and CDR is the default serialization format used in rosbag2.
 
 ## Usage
