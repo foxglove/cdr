@@ -206,10 +206,7 @@ describe("CdrReader", () => {
       writer.dHeader(objectSize);
 
       const reader = new CdrReader(writer.data);
-      expect(reader.dHeader()).toEqual({
-        objectSize,
-        littleEndianFlag: true,
-      });
+      expect(reader.dHeader()).toEqual(objectSize);
     },
   );
 

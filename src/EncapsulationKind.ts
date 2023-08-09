@@ -1,4 +1,5 @@
-// From <https://www.omg.org/spec/DDS-XTypes/1.2/PDF>
+// From <https://www.omg.org/spec/DDS-XTypes/1.3/PDF>
+// ============= NOTE DDS-XTypes spec v1.3 ==========
 // "7.4.3.4 Functions related to data types and objects"
 // ENC_HEADER
 // {0x00, 0x00} -- PLAIN_CDR, BIG_ENDIAN,
