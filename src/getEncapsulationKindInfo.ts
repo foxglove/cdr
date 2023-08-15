@@ -59,8 +59,10 @@ export const getEncapsulationKindInfo = (
     kind === EncapsulationKind.RTPS_PL_CDR2_BE ||
     kind === EncapsulationKind.RTPS_PL_CDR2_LE;
 
+  const isPLCDR1 = kind === EncapsulationKind.PL_CDR_BE || kind === EncapsulationKind.PL_CDR_LE;
+
   const usesDelimiterHeader = isDelimitedCDR2 || isPLCDR2;
-  const usesMemberHeader = isPLCDR2;
+  const usesMemberHeader = isPLCDR2 || isPLCDR1;
 
   return {
     isCDR2,

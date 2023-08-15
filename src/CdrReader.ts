@@ -29,6 +29,7 @@ export class CdrReader {
   private littleEndian: boolean;
   private hostLittleEndian: boolean;
   private eightByteAlignment: number; // Alignment for 64-bit values, 4 on CDR2 8 on CDR1
+  private isCDR2: boolean;
   private textDecoder = new TextDecoder("utf8");
 
   // Need to be public for higher level serializers to use
@@ -66,6 +67,7 @@ export class CdrReader {
 
     this.littleEndian = littleEndian;
     this.hostLittleEndian = !isBigEndian();
+    this.isCDR2 = isCDR2;
     this.eightByteAlignment = isCDR2 ? 4 : 8;
     this.offset = 4;
   }
@@ -181,6 +183,58 @@ export class CdrReader {
    * Reads the member header (EMHEADER) and returns the member ID, mustUnderstand flag, and object size
    */
   emHeader(): { mustUnderstand: boolean; id: number; objectSize: number } {
+    if (this.isCDR2) {
+      return this.parameterHeaderV2();
+    } else {
+      return this.parameterHeaderV1();
+    }
+  }
+
+  /** XCDR1 PL_CDR encapsulation parameter header*/
+  private parameterHeaderV1(): { id: number; objectSize: number; mustUnderstand: boolean } {
+    // 4-byte header with two 16-bit fields
+    this.align(4);
+    const idHeader = this.uint16();
+
+    const mustUnderstandFlag = (idHeader & 0x4000) >> 14 === 1;
+    // indicates that the parameter has a implementation-specific internpratation
+    const implementationSpecificFlag = (idHeader & 0x8000) >> 15 === 1;
+
+    // Allows the specification of large member ID and/or data length values
+    // requires the reading in of two uint32's for ID and size
+    const extendedPIDFlag = (idHeader & 0x3fff) === 0x3f01;
+
+    // Indicates the end of the parameter list structure
+    const listEndPIDFlag = (idHeader & 0x3fff) === 0x3f02;
+    if (listEndPIDFlag) {
+      // skip and read next parameter
+      this.uint16();
+      return this.parameterHeaderV1();
+    }
+
+    // Indicates that the ID should be ignored
+    // const ignorePIDFlag = (idHeader & 0x3fff) === 0x3f03;
+
+    const usesReservedParameterId = (idHeader & 0x3fff) > 0x3f02;
+
+    // Not trying to support right now if we don't need to
+    if (usesReservedParameterId || implementationSpecificFlag) {
+      throw new Error(`Unsupported parameter ID header ${idHeader.toString(16)}`);
+    }
+
+    if (extendedPIDFlag) {
+      this.uint16();
+      const id = this.uint32();
+      const objectSize = this.uint32();
+      return { id, objectSize, mustUnderstand: mustUnderstandFlag };
+    }
+
+    const id = idHeader & 0x3fff;
+
+    const lengthHeader = this.uint16();
+    return { id, objectSize: lengthHeader, mustUnderstand: mustUnderstandFlag };
+  }
+  parameterHeaderV2(): { id: number; objectSize: number; mustUnderstand: boolean } {
     const header = this.uint32();
     // EMHEADER = (M_FLAG<<31) + (LC<<28) + M.id
     // M is the member of a structure

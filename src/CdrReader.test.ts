@@ -199,6 +199,43 @@ describe("CdrReader", () => {
     expect(reader.offset).toEqual(writer.data.length);
   });
 
+  it.each([
+    [true, 100, 1],
+    [false, 200, 2],
+    [false, 1028, 4],
+    [false, 65, 8],
+    [true, 63, 9],
+    [false, 127, 0xffff],
+  ])(
+    "round trips XCDR1 parameter header values with mustUnderstand: %d, id: %d, and size: %d",
+    (mustUnderstand: boolean, id: number, objectSize: number) => {
+      const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_BE });
+
+      writer.emHeader(mustUnderstand, id, objectSize);
+
+      const reader = new CdrReader(writer.data);
+      const header = reader.emHeader();
+
+      expect(header).toEqual({
+        objectSize,
+        id,
+        mustUnderstand,
+      });
+    },
+  );
+
+  it("converts extended PID", () => {
+    const buffer = new Uint8Array(Buffer.from("00030000017f080064000000400000000", "hex"));
+    const reader = new CdrReader(buffer);
+    expect(reader.emHeader()).toMatchInlineSnapshot(`
+Object {
+  "id": 100,
+  "mustUnderstand": true,
+  "objectSize": 64,
+}
+`);
+  });
+
   it("takes a length when reading a string and doesn't read the sequence length again", () => {
     const writer = new CdrWriter();
     const testString = "test";
@@ -208,6 +245,7 @@ describe("CdrReader", () => {
     const length = reader.sequenceLength();
     expect(reader.string(length)).toEqual("test");
   });
+
   it.each([[1], [2], [4], [8], [0x7fffffff]])(
     "round trips DHEADER values of size %d",
     (objectSize) => {

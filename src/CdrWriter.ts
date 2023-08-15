@@ -14,6 +14,7 @@ export class CdrWriter {
 
   private littleEndian: boolean;
   private hostLittleEndian: boolean;
+  private isCDR2: boolean;
   private eightByteAlignment: number; // Alignment for 64-bit values, 4 on CDR2 8 on CDR1
   private buffer: ArrayBuffer;
   private array: Uint8Array;
@@ -45,6 +46,7 @@ export class CdrWriter {
     const kind = options.kind ?? EncapsulationKind.CDR_LE;
 
     const { isCDR2, littleEndian } = getEncapsulationKindInfo(kind);
+    this.isCDR2 = isCDR2;
     this.littleEndian = littleEndian;
     this.hostLittleEndian = !isBigEndian();
     this.eightByteAlignment = isCDR2 ? 4 : 8;
@@ -179,8 +181,34 @@ export class CdrWriter {
 
   /**
    * Writes the member header (EMHEADER): mustUnderstand flag, the member ID, and object size
+   * Accomodates for PL_CDR and PL_CDR2 based on the CdrWriter constructor options
    */
   emHeader(mustUnderstand: boolean, id: number, objectSize: number): CdrWriter {
+    return this.isCDR2
+      ? this.parameterHeaderV2(mustUnderstand, id, objectSize)
+      : this.parameterHeaderV1(mustUnderstand, id, objectSize);
+  }
+
+  private parameterHeaderV1(mustUnderstand: boolean, id: number, objectSize: number): CdrWriter {
+    const mustUnderstandFlag = mustUnderstand ? 1 << 14 : 0;
+    if (id > 0x3f00) {
+      throw Error(
+        `Parameter ID ${id} is too large. Must be less than 0x3f00. Larger IDs are not yet supported`,
+      );
+    }
+    const idHeader = mustUnderstandFlag | id;
+    this.uint16(idHeader);
+
+    if (objectSize > 0xffff) {
+      throw Error(`Member object size ${objectSize} is too large. Must be less than 0xffff`);
+    }
+    const objectSizeHeader = objectSize & 0xffff;
+    this.uint16(objectSizeHeader);
+
+    return this;
+  }
+
+  private parameterHeaderV2(mustUnderstand: boolean, id: number, objectSize: number): CdrWriter {
     if (id > 0x0fffffff) {
       // first byte is used for M_FLAG and LC
       throw Error(`Member ID ${id} is too large. Max value is ${0x0fffffff}`);
