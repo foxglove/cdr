@@ -32,6 +32,8 @@ export class CdrReader {
   private isCDR2: boolean;
   private textDecoder = new TextDecoder("utf8");
 
+  private origin = 0;
+
   // Need to be public for higher level serializers to use
   readonly usesDelimiterHeader: boolean;
   readonly usesMemberHeader: boolean;
@@ -69,6 +71,7 @@ export class CdrReader {
     this.hostLittleEndian = !isBigEndian();
     this.isCDR2 = isCDR2;
     this.eightByteAlignment = isCDR2 ? 4 : 8;
+    this.origin = 4;
     this.offset = 4;
   }
 
@@ -184,14 +187,14 @@ export class CdrReader {
    */
   emHeader(): { mustUnderstand: boolean; id: number; objectSize: number } {
     if (this.isCDR2) {
-      return this.parameterHeaderV2();
+      return this.memberHeaderV2();
     } else {
-      return this.parameterHeaderV1();
+      return this.memberHeaderV1();
     }
   }
 
   /** XCDR1 PL_CDR encapsulation parameter header*/
-  private parameterHeaderV1(): { id: number; objectSize: number; mustUnderstand: boolean } {
+  private memberHeaderV1(): { id: number; objectSize: number; mustUnderstand: boolean } {
     // 4-byte header with two 16-bit fields
     this.align(4);
     const idHeader = this.uint16();
@@ -205,11 +208,9 @@ export class CdrReader {
     const extendedPIDFlag = (idHeader & 0x3fff) === 0x3f01;
 
     // Indicates the end of the parameter list structure
-    const listEndPIDFlag = (idHeader & 0x3fff) === 0x3f02;
-    if (listEndPIDFlag) {
-      // skip and read next parameter
-      this.uint16();
-      return this.parameterHeaderV1();
+    const sentinelPIDFlag = (idHeader & 0x3fff) === 0x3f02;
+    if (sentinelPIDFlag) {
+      throw Error("Expected Member Header but got SENTINEL_PID Flag");
     }
 
     // Indicates that the ID should be ignored
@@ -223,18 +224,35 @@ export class CdrReader {
     }
 
     if (extendedPIDFlag) {
+      // to do: could maybe remove because align will take care of it
       this.uint16();
-      const id = this.uint32();
-      const objectSize = this.uint32();
-      return { id, objectSize, mustUnderstand: mustUnderstandFlag };
     }
 
-    const id = idHeader & 0x3fff;
-
-    const lengthHeader = this.uint16();
-    return { id, objectSize: lengthHeader, mustUnderstand: mustUnderstandFlag };
+    const id = extendedPIDFlag ? this.uint32() : idHeader & 0x3fff;
+    const objectSize = extendedPIDFlag ? this.uint32() : this.uint16();
+    this.originPush();
+    return { id, objectSize, mustUnderstand: mustUnderstandFlag };
   }
-  parameterHeaderV2(): { id: number; objectSize: number; mustUnderstand: boolean } {
+
+  private originPush(): void {
+    this.origin = this.offset;
+  }
+
+  /** Reads the PID_SENTINEL value if encapsulation kind supports it (PL_CDR version 1)*/
+  sentinelHeader(): void {
+    if (!this.isCDR2) {
+      this.align(4);
+      const header = this.uint16();
+      // Indicates the end of the parameter list structure
+      const sentinelPIDFlag = (header & 0x3fff) === 0x3f02;
+      if (!sentinelPIDFlag) {
+        throw Error(`Expected SENTINEL_PID (0x3f02) flag, but got ${header.toString(16)}`);
+      }
+      this.uint16();
+    }
+  }
+
+  private memberHeaderV2(): { id: number; objectSize: number; mustUnderstand: boolean } {
     const header = this.uint32();
     // EMHEADER = (M_FLAG<<31) + (LC<<28) + M.id
     // M is the member of a structure
@@ -361,7 +379,7 @@ export class CdrReader {
   }
 
   private align(size: number): void {
-    const alignment = (this.offset - 4) % size;
+    const alignment = (this.offset - this.origin) % size;
     if (alignment > 0) {
       this.offset += size - alignment;
     }

@@ -206,6 +206,9 @@ describe("CdrReader", () => {
     [false, 65, 8],
     [true, 63, 9],
     [false, 127, 0xffff],
+    [false, 127, 0x1ffff], // extended PID
+    [true, 700000, 0xffff], // extended PID
+    [false, 700000, 0x1ffff], // extended PID
   ])(
     "round trips XCDR1 parameter header values with mustUnderstand: %d, id: %d, and size: %d",
     (mustUnderstand: boolean, id: number, objectSize: number) => {
@@ -244,6 +247,14 @@ Object {
     const reader = new CdrReader(writer.data);
     const length = reader.sequenceLength();
     expect(reader.string(length)).toEqual("test");
+  });
+
+  it("errors when expecting to read a sentinel header but receives non-sentinel_PID value", () => {
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
+    writer.emHeader(false, 100, 4);
+
+    const reader = new CdrReader(writer.data);
+    expect(() => reader.sentinelHeader()).toThrowError(/Expected sentinel_pid/i);
   });
 
   it.each([[1], [2], [4], [8], [0x7fffffff]])(

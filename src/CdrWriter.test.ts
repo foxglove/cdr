@@ -188,6 +188,29 @@ describe("CdrWriter", () => {
     writer.align(4); // no-op, already aligned
     expect(toHex(writer.data)).toEqual("000b00000100000002000000");
   });
+  it("aligns 8 byte values in xcdr PL_CDR without emheader using padding", () => {
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE }); // origin=  4
+    writer.uint32(1);
+    writer.uint64(0x0fn);
+    //prettier-ignore
+    expect(toHex(writer.data)).toEqual(
+      "00030000" +  // header 
+      "01000000" +  // uint32
+      "00000000" + // padding
+      "0f00000000000000" //uint64
+    );
+  });
+  it("emHeaders resets origin for 8 byte value alignment", () => {
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE }); // origin=  4
+    writer.emHeader(true, 1, 8);
+    writer.uint64(0x0fn);
+    //prettier-ignore
+    expect(toHex(writer.data)).toEqual(
+      "00030000" +  // header 
+      "01400800" +  // uint32
+      "0f00000000000000" //uint64
+    );
+  });
 });
 
 function enumKeys<O extends Record<string, unknown>, K extends keyof O = keyof O>(obj: O): K[] {
