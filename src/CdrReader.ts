@@ -201,7 +201,7 @@ export class CdrReader {
     const idHeader = this.uint16();
 
     const mustUnderstandFlag = (idHeader & 0x4000) >> 14 === 1;
-    // indicates that the parameter has a implementation-specific internpratation
+    // indicates that the parameter has a implementation-specific interpretation
     const implementationSpecificFlag = (idHeader & 0x8000) >> 15 === 1;
 
     // Allows the specification of large member ID and/or data length values
