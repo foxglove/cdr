@@ -1,6 +1,7 @@
 import { EncapsulationKind } from "./EncapsulationKind";
 import { getEncapsulationKindInfo } from "./getEncapsulationKindInfo";
 import { isBigEndian } from "./isBigEndian";
+import { EXTENDED_PID, SENTINEL_PID } from "./reservedPIDs";
 
 interface Indexable {
   [index: number]: unknown;
@@ -205,10 +206,10 @@ export class CdrReader {
 
     // Allows the specification of large member ID and/or data length values
     // requires the reading in of two uint32's for ID and size
-    const extendedPIDFlag = (idHeader & 0x3fff) === 0x3f01;
+    const extendedPIDFlag = (idHeader & 0x3fff) === EXTENDED_PID;
 
     // Indicates the end of the parameter list structure
-    const sentinelPIDFlag = (idHeader & 0x3fff) === 0x3f02;
+    const sentinelPIDFlag = (idHeader & 0x3fff) === SENTINEL_PID;
     if (sentinelPIDFlag) {
       throw Error("Expected Member Header but got SENTINEL_PID Flag");
     }
@@ -216,7 +217,7 @@ export class CdrReader {
     // Indicates that the ID should be ignored
     // const ignorePIDFlag = (idHeader & 0x3fff) === 0x3f03;
 
-    const usesReservedParameterId = (idHeader & 0x3fff) > 0x3f02;
+    const usesReservedParameterId = (idHeader & 0x3fff) > SENTINEL_PID;
 
     // Not trying to support right now if we don't need to
     if (usesReservedParameterId || implementationSpecificFlag) {
@@ -244,9 +245,9 @@ export class CdrReader {
       this.align(4);
       const header = this.uint16();
       // Indicates the end of the parameter list structure
-      const sentinelPIDFlag = (header & 0x3fff) === 0x3f02;
+      const sentinelPIDFlag = (header & 0x3fff) === SENTINEL_PID;
       if (!sentinelPIDFlag) {
-        throw Error(`Expected SENTINEL_PID (0x3f02) flag, but got ${header.toString(16)}`);
+        throw Error(`Expected SENTINEL_PID (${SENTINEL_PID}) flag, but got ${header.toString(16)}`);
       }
       this.uint16();
     }

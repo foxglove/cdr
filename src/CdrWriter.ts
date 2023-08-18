@@ -1,6 +1,7 @@
 import { EncapsulationKind } from "./EncapsulationKind";
 import { getEncapsulationKindInfo } from "./getEncapsulationKindInfo";
 import { isBigEndian } from "./isBigEndian";
+import { EXTENDED_PID, SENTINEL_PID } from "./reservedPIDs";
 
 export type CdrWriterOpts = {
   buffer?: ArrayBuffer;
@@ -203,7 +204,7 @@ export class CdrWriter {
       const objectSizeHeader = objectSize & 0xffff;
       this.uint16(objectSizeHeader);
     } else {
-      const extendedHeader = mustUnderstandFlag | 0x3f01;
+      const extendedHeader = mustUnderstandFlag | EXTENDED_PID;
       this.uint16(extendedHeader);
       this.uint16(8); // size of next two parameters
       this.uint32(id);
@@ -222,7 +223,7 @@ export class CdrWriter {
   /** Writes the PID_SENTINEL value if encapsulation supports it*/
   sentinelHeader(): CdrWriter {
     if (!this.isCDR2) {
-      this.uint16(0x3f02);
+      this.uint16(SENTINEL_PID);
       this.uint16(0);
     }
     return this;
