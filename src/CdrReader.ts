@@ -1,6 +1,7 @@
 import { EncapsulationKind } from "./EncapsulationKind";
 import { getEncapsulationKindInfo } from "./getEncapsulationKindInfo";
 import { isBigEndian } from "./isBigEndian";
+import { EXTENDED_PID, SENTINEL_PID } from "./reservedPIDs";
 
 interface Indexable {
   [index: number]: unknown;
@@ -29,7 +30,11 @@ export class CdrReader {
   private littleEndian: boolean;
   private hostLittleEndian: boolean;
   private eightByteAlignment: number; // Alignment for 64-bit values, 4 on CDR2 8 on CDR1
+  private isCDR2: boolean;
   private textDecoder = new TextDecoder("utf8");
+
+  /** Origin offset into stream used for alignment */
+  private origin = 0;
 
   // Need to be public for higher level serializers to use
   readonly usesDelimiterHeader: boolean;
@@ -66,7 +71,9 @@ export class CdrReader {
 
     this.littleEndian = littleEndian;
     this.hostLittleEndian = !isBigEndian();
+    this.isCDR2 = isCDR2;
     this.eightByteAlignment = isCDR2 ? 4 : 8;
+    this.origin = 4;
     this.offset = 4;
   }
 
@@ -181,6 +188,79 @@ export class CdrReader {
    * Reads the member header (EMHEADER) and returns the member ID, mustUnderstand flag, and object size
    */
   emHeader(): { mustUnderstand: boolean; id: number; objectSize: number } {
+    if (this.isCDR2) {
+      return this.memberHeaderV2();
+    } else {
+      return this.memberHeaderV1();
+    }
+  }
+
+  /** XCDR1 PL_CDR encapsulation parameter header*/
+  private memberHeaderV1(): { id: number; objectSize: number; mustUnderstand: boolean } {
+    // 4-byte header with two 16-bit fields
+    this.align(4);
+    const idHeader = this.uint16();
+
+    const mustUnderstandFlag = (idHeader & 0x4000) >> 14 === 1;
+    // indicates that the parameter has a implementation-specific interpretation
+    const implementationSpecificFlag = (idHeader & 0x8000) >> 15 === 1;
+
+    // Allows the specification of large member ID and/or data length values
+    // requires the reading in of two uint32's for ID and size
+    const extendedPIDFlag = (idHeader & 0x3fff) === EXTENDED_PID;
+
+    // Indicates the end of the parameter list structure
+    const sentinelPIDFlag = (idHeader & 0x3fff) === SENTINEL_PID;
+    if (sentinelPIDFlag) {
+      throw Error("Expected Member Header but got SENTINEL_PID Flag");
+    }
+
+    // Indicates that the ID should be ignored
+    // const ignorePIDFlag = (idHeader & 0x3fff) === 0x3f03;
+
+    const usesReservedParameterId = (idHeader & 0x3fff) > SENTINEL_PID;
+
+    // Not trying to support right now if we don't need to
+    if (usesReservedParameterId || implementationSpecificFlag) {
+      throw new Error(`Unsupported parameter ID header ${idHeader.toString(16)}`);
+    }
+
+    if (extendedPIDFlag) {
+      // Need to consume last part of header (is just an 8 in this case)
+      // Alignment could take care of this, but I want to be explicit
+      this.uint16();
+    }
+
+    const id = extendedPIDFlag ? this.uint32() : idHeader & 0x3fff;
+    const objectSize = extendedPIDFlag ? this.uint32() : this.uint16();
+    this.resetOrigin();
+    return { id, objectSize, mustUnderstand: mustUnderstandFlag };
+  }
+
+  /** Sets the origin to the offset (DDS-XTypes Spec: `PUSH(ORIGIN = 0)`)*/
+  private resetOrigin(): void {
+    this.origin = this.offset;
+  }
+
+  /** Reads the PID_SENTINEL value if encapsulation kind supports it (PL_CDR version 1)*/
+  sentinelHeader(): void {
+    if (!this.isCDR2) {
+      this.align(4);
+      const header = this.uint16();
+      // Indicates the end of the parameter list structure
+      const sentinelPIDFlag = (header & 0x3fff) === SENTINEL_PID;
+      if (!sentinelPIDFlag) {
+        throw Error(
+          `Expected SENTINEL_PID (${SENTINEL_PID.toString(16)}) flag, but got ${header.toString(
+            16,
+          )}`,
+        );
+      }
+      this.uint16();
+    }
+  }
+
+  private memberHeaderV2(): { id: number; objectSize: number; mustUnderstand: boolean } {
     const header = this.uint32();
     // EMHEADER = (M_FLAG<<31) + (LC<<28) + M.id
     // M is the member of a structure
@@ -307,7 +387,7 @@ export class CdrReader {
   }
 
   private align(size: number): void {
-    const alignment = (this.offset - 4) % size;
+    const alignment = (this.offset - this.origin) % size;
     if (alignment > 0) {
       this.offset += size - alignment;
     }

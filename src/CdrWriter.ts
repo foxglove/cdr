@@ -1,6 +1,7 @@
 import { EncapsulationKind } from "./EncapsulationKind";
 import { getEncapsulationKindInfo } from "./getEncapsulationKindInfo";
 import { isBigEndian } from "./isBigEndian";
+import { EXTENDED_PID, SENTINEL_PID } from "./reservedPIDs";
 
 export type CdrWriterOpts = {
   buffer?: ArrayBuffer;
@@ -14,12 +15,15 @@ export class CdrWriter {
 
   private littleEndian: boolean;
   private hostLittleEndian: boolean;
+  private isCDR2: boolean;
   private eightByteAlignment: number; // Alignment for 64-bit values, 4 on CDR2 8 on CDR1
   private buffer: ArrayBuffer;
   private array: Uint8Array;
   private view: DataView;
   private textEncoder = new TextEncoder();
   private offset: number;
+  /** Origin offset into stream used for alignment */
+  private origin: number;
 
   get data(): Uint8Array {
     return new Uint8Array(this.buffer, 0, this.offset);
@@ -45,6 +49,7 @@ export class CdrWriter {
     const kind = options.kind ?? EncapsulationKind.CDR_LE;
 
     const { isCDR2, littleEndian } = getEncapsulationKindInfo(kind);
+    this.isCDR2 = isCDR2;
     this.littleEndian = littleEndian;
     this.hostLittleEndian = !isBigEndian();
     this.eightByteAlignment = isCDR2 ? 4 : 8;
@@ -60,6 +65,7 @@ export class CdrWriter {
     // when it reads the options field
     this.view.setUint16(2, 0, false);
     this.offset = 4;
+    this.origin = 4;
   }
 
   int8(value: number): CdrWriter {
@@ -179,8 +185,52 @@ export class CdrWriter {
 
   /**
    * Writes the member header (EMHEADER): mustUnderstand flag, the member ID, and object size
+   * Accomodates for PL_CDR and PL_CDR2 based on the CdrWriter constructor options
    */
   emHeader(mustUnderstand: boolean, id: number, objectSize: number): CdrWriter {
+    return this.isCDR2
+      ? this.memberHeaderV2(mustUnderstand, id, objectSize)
+      : this.memberHeaderV1(mustUnderstand, id, objectSize);
+  }
+
+  private memberHeaderV1(mustUnderstand: boolean, id: number, objectSize: number): CdrWriter {
+    this.align(4);
+    const mustUnderstandFlag = mustUnderstand ? 1 << 14 : 0;
+    const shouldUseExtendedPID = id > 0x3f00 || objectSize > 0xffff;
+
+    if (!shouldUseExtendedPID) {
+      const idHeader = mustUnderstandFlag | id;
+      this.uint16(idHeader);
+      const objectSizeHeader = objectSize & 0xffff;
+      this.uint16(objectSizeHeader);
+    } else {
+      const extendedHeader = mustUnderstandFlag | EXTENDED_PID;
+      this.uint16(extendedHeader);
+      this.uint16(8); // size of next two parameters
+      this.uint32(id);
+      this.uint32(objectSize);
+    }
+
+    this.resetOrigin();
+
+    return this;
+  }
+
+  /** Sets the origin to the offset (DDS-XTypes Spec: `PUSH(ORIGIN = 0)`)*/
+  private resetOrigin() {
+    this.origin = this.offset;
+  }
+
+  /** Writes the PID_SENTINEL value if encapsulation supports it*/
+  sentinelHeader(): CdrWriter {
+    if (!this.isCDR2) {
+      this.uint16(SENTINEL_PID);
+      this.uint16(0);
+    }
+    return this;
+  }
+
+  private memberHeaderV2(mustUnderstand: boolean, id: number, objectSize: number): CdrWriter {
     if (id > 0x0fffffff) {
       // first byte is used for M_FLAG and LC
       throw Error(`Member ID ${id} is too large. Max value is ${0x0fffffff}`);
@@ -421,8 +471,7 @@ export class CdrWriter {
    *   data such as arrays
    */
   align(size: number, bytesToWrite: number = size): void {
-    // The four byte header is not considered for alignment
-    const alignment = (this.offset - 4) % size;
+    const alignment = (this.offset - this.origin) % size;
     const padding = alignment > 0 ? size - alignment : 0;
     this.resizeIfNeeded(padding + bytesToWrite);
     // Write padding bytes
