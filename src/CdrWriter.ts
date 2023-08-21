@@ -22,6 +22,7 @@ export class CdrWriter {
   private view: DataView;
   private textEncoder = new TextEncoder();
   private offset: number;
+  /** Origin offset into stream used for alignment */
   private origin: number;
 
   get data(): Uint8Array {
@@ -48,7 +49,6 @@ export class CdrWriter {
     const kind = options.kind ?? EncapsulationKind.CDR_LE;
 
     const { isCDR2, littleEndian } = getEncapsulationKindInfo(kind);
-    this.origin = 0;
     this.isCDR2 = isCDR2;
     this.littleEndian = littleEndian;
     this.hostLittleEndian = !isBigEndian();
@@ -211,12 +211,13 @@ export class CdrWriter {
       this.uint32(objectSize);
     }
 
-    this.pushOrigin();
+    this.resetOrigin();
 
     return this;
   }
 
-  private pushOrigin() {
+  /** Sets the origin to the offset (DDS-XTypes Spec: `PUSH(ORIGIN = 0)`)*/
+  private resetOrigin() {
     this.origin = this.offset;
   }
 
@@ -470,7 +471,6 @@ export class CdrWriter {
    *   data such as arrays
    */
   align(size: number, bytesToWrite: number = size): void {
-    // The four byte header is not considered for alignment
     const alignment = (this.offset - this.origin) % size;
     const padding = alignment > 0 ? size - alignment : 0;
     this.resizeIfNeeded(padding + bytesToWrite);

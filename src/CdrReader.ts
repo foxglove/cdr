@@ -33,6 +33,7 @@ export class CdrReader {
   private isCDR2: boolean;
   private textDecoder = new TextDecoder("utf8");
 
+  /** Origin offset into stream used for alignment */
   private origin = 0;
 
   // Need to be public for higher level serializers to use
@@ -225,17 +226,19 @@ export class CdrReader {
     }
 
     if (extendedPIDFlag) {
-      // to do: could maybe remove because align will take care of it
+      // Need to consume last part of header (is just an 8 in this case)
+      // Alignment could take care of this, but I want to be explicit
       this.uint16();
     }
 
     const id = extendedPIDFlag ? this.uint32() : idHeader & 0x3fff;
     const objectSize = extendedPIDFlag ? this.uint32() : this.uint16();
-    this.originPush();
+    this.resetOrigin();
     return { id, objectSize, mustUnderstand: mustUnderstandFlag };
   }
 
-  private originPush(): void {
+  /** Sets the origin to the offset (DDS-XTypes Spec: `PUSH(ORIGIN = 0)`)*/
+  private resetOrigin(): void {
     this.origin = this.offset;
   }
 
@@ -247,7 +250,11 @@ export class CdrReader {
       // Indicates the end of the parameter list structure
       const sentinelPIDFlag = (header & 0x3fff) === SENTINEL_PID;
       if (!sentinelPIDFlag) {
-        throw Error(`Expected SENTINEL_PID (${SENTINEL_PID}) flag, but got ${header.toString(16)}`);
+        throw Error(
+          `Expected SENTINEL_PID (${SENTINEL_PID.toString(16)}) flag, but got ${header.toString(
+            16,
+          )}`,
+        );
       }
       this.uint16();
     }

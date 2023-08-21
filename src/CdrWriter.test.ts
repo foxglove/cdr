@@ -202,12 +202,12 @@ describe("CdrWriter", () => {
   });
   it("emHeaders resets origin for 8 byte value alignment", () => {
     const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE }); // origin=  4
-    writer.emHeader(true, 1, 8);
+    writer.emHeader(true, 5, 8);
     writer.uint64(0x0fn);
     //prettier-ignore
     expect(toHex(writer.data)).toEqual(
       "00030000" +  // header 
-      "01400800" +  // uint32
+      "05400800" +  // uint32
       "0f00000000000000" //uint64
     );
   });
