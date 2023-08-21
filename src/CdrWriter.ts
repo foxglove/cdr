@@ -224,6 +224,7 @@ export class CdrWriter {
   /** Writes the PID_SENTINEL value if encapsulation supports it*/
   sentinelHeader(): CdrWriter {
     if (!this.isCDR2) {
+      this.align(4);
       this.uint16(SENTINEL_PID);
       this.uint16(0);
     }
