@@ -1,6 +1,7 @@
 import { EncapsulationKind } from "./EncapsulationKind";
 import { getEncapsulationKindInfo } from "./getEncapsulationKindInfo";
 import { isBigEndian } from "./isBigEndian";
+import { getLengthCodeForObjectSize, lengthCodeToObjectSizes } from "./lengthCodes";
 import { EXTENDED_PID, SENTINEL_PID } from "./reservedPIDs";
 
 export type CdrWriterOpts = {
@@ -184,12 +185,17 @@ export class CdrWriter {
   }
 
   /**
-   * Writes the member header (EMHEADER): mustUnderstand flag, the member ID, and object size
+   * Writes the member header (EMHEADER): mustUnderstand flag, the member ID, object size, and optional length code for CDR2 emHeaders
    * Accomodates for PL_CDR and PL_CDR2 based on the CdrWriter constructor options
    */
-  emHeader(mustUnderstand: boolean, id: number, objectSize: number): CdrWriter {
+  emHeader(
+    mustUnderstand: boolean,
+    id: number,
+    objectSize: number,
+    lengthCode?: number,
+  ): CdrWriter {
     return this.isCDR2
-      ? this.memberHeaderV2(mustUnderstand, id, objectSize)
+      ? this.memberHeaderV2(mustUnderstand, id, objectSize, lengthCode)
       : this.memberHeaderV1(mustUnderstand, id, objectSize);
   }
 
@@ -231,7 +237,12 @@ export class CdrWriter {
     return this;
   }
 
-  private memberHeaderV2(mustUnderstand: boolean, id: number, objectSize: number): CdrWriter {
+  private memberHeaderV2(
+    mustUnderstand: boolean,
+    id: number,
+    objectSize: number,
+    lengthCode?: number,
+  ): CdrWriter {
     if (id > 0x0fffffff) {
       // first byte is used for M_FLAG and LC
       throw Error(`Member ID ${id} is too large. Max value is ${0x0fffffff}`);
@@ -241,37 +252,46 @@ export class CdrWriter {
     // M_FLAG is the value of the Must Understand option for the member
     const mustUnderstandFlag = mustUnderstand ? 1 << 31 : 0;
     // LC is the value of the Length Code for the member.
-    let lengthCode: number | undefined;
-    switch (objectSize) {
-      case 1:
-        lengthCode = 0;
-        break;
-      case 2:
-        lengthCode = 1;
-        break;
-      case 4:
-        lengthCode = 2;
-        break;
-      case 8:
-        lengthCode = 3;
-        break;
-    }
+    const finalLengthCode = lengthCode ?? getLengthCodeForObjectSize(objectSize);
 
-    if (lengthCode == undefined) {
-      // Not currently supporting writing of lengthCodes > 4
-      if (objectSize > 0xffffffff) {
-        throw Error(`Object size ${objectSize} for EMHEADER too large. Max size is ${0xfffffffff}`);
-      }
-      lengthCode = 4;
-    }
-
-    const header = mustUnderstandFlag | (lengthCode << 28) | id;
+    const header = mustUnderstandFlag | (finalLengthCode << 28) | id;
 
     this.uint32(header);
 
-    // When the length code is > 3 the header is 8 bytes because of the NEXTINT value storing the object size
-    if (lengthCode >= 4) {
-      this.uint32(objectSize);
+    switch (finalLengthCode) {
+      case 0:
+      case 1:
+      case 2:
+      case 3: {
+        const shouldBeSize = lengthCodeToObjectSizes[finalLengthCode];
+        if (objectSize !== shouldBeSize) {
+          throw new Error(
+            `Cannot write a length code ${finalLengthCode} header with an object size not equal to ${shouldBeSize}`,
+          );
+        }
+        break;
+      }
+      // When the length code is > 3 the header is 8 bytes because of the NEXTINT value storing the object size
+      case 4:
+      case 5:
+        this.uint32(objectSize);
+        break;
+      case 6:
+        if (objectSize % 4 !== 0) {
+          throw new Error(
+            "Cannot write a length code 6 header with an object size that is not a multiple of 4",
+          );
+        }
+        this.uint32(Math.floor(objectSize / 4));
+        break;
+      case 7:
+        if (objectSize % 8 !== 0) {
+          throw new Error(
+            "Cannot write a length code 7 header with an object size that is not a multiple of 8",
+          );
+        }
+        this.uint32(Math.floor(objectSize / 8));
+        break;
     }
 
     return this;

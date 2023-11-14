@@ -277,11 +277,41 @@ Object {
     [true, 63, 9],
     [false, 127, 0xffffffff],
   ])(
-    "round trips EMHEADER values with mustUnderstand: %d, id: %d, and size: %d",
+    "round trips EMHEADER values with mustUnderstand: %d, id: %d, and size: %d without lengthCode",
     (mustUnderstand: boolean, id: number, objectSize: number) => {
       const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR2_LE });
 
       writer.emHeader(mustUnderstand, id, objectSize);
+
+      const reader = new CdrReader(writer.data);
+      // don't want to test default assignment of length code here
+      const { lengthCode, ...headerNoLengthCode } = reader.emHeader();
+
+      expect(headerNoLengthCode).toEqual({
+        objectSize,
+        id,
+        mustUnderstand,
+      });
+      // should be defined because of CDR2
+      expect(lengthCode).toBeDefined();
+    },
+  );
+  it.each([
+    [true, 100, 1, 0], // LC 0, 1 byte
+    [false, 200, 2, 1], // LC 1, 2 bytes
+    [false, 1028, 4, 2], // LC 2, 4 bytes
+    [false, 65, 8, 3], // LC 3, 8 bytes
+    [true, 63, 9, 4], // LC 4, any size
+    [false, 127, 0xffffffff, 5], // LC
+    [false, 65, 12, 6], // LC 6, multiple of 4 bytes
+    [false, 65, 32, 7], // LC 7, multiple of 8 bytes
+    [false, 127, 0xffffffff, 5],
+  ])(
+    "round trips EMHEADER values with mustUnderstand: %d, id: %d, size: %d, and lengthCode: %d",
+    (mustUnderstand: boolean, id: number, objectSize: number, lengthCode: number) => {
+      const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR2_LE });
+
+      writer.emHeader(mustUnderstand, id, objectSize, lengthCode);
 
       const reader = new CdrReader(writer.data);
       const header = reader.emHeader();
@@ -290,6 +320,7 @@ Object {
         objectSize,
         id,
         mustUnderstand,
+        lengthCode,
       });
     },
   );

@@ -1,6 +1,7 @@
 import { EncapsulationKind } from "./EncapsulationKind";
 import { getEncapsulationKindInfo } from "./getEncapsulationKindInfo";
 import { isBigEndian } from "./isBigEndian";
+import { lengthCodeToObjectSizes } from "./lengthCodes";
 import { EXTENDED_PID, SENTINEL_PID } from "./reservedPIDs";
 
 interface Indexable {
@@ -185,9 +186,10 @@ export class CdrReader {
   }
 
   /**
-   * Reads the member header (EMHEADER) and returns the member ID, mustUnderstand flag, and object size
+   * Reads the member header (EMHEADER) and returns the member ID, mustUnderstand flag, and object size with optional length code
+   * The length code is only present in CDR2 and should prompt objectSize to be used in place of sequence length if applicable.
    */
-  emHeader(): { mustUnderstand: boolean; id: number; objectSize: number } {
+  emHeader(): { mustUnderstand: boolean; id: number; objectSize: number; lengthCode?: number } {
     if (this.isCDR2) {
       return this.memberHeaderV2();
     } else {
@@ -196,7 +198,11 @@ export class CdrReader {
   }
 
   /** XCDR1 PL_CDR encapsulation parameter header*/
-  private memberHeaderV1(): { id: number; objectSize: number; mustUnderstand: boolean } {
+  private memberHeaderV1(): {
+    id: number;
+    objectSize: number;
+    mustUnderstand: boolean;
+  } {
     // 4-byte header with two 16-bit fields
     this.align(4);
     const idHeader = this.uint16();
@@ -260,7 +266,12 @@ export class CdrReader {
     }
   }
 
-  private memberHeaderV2(): { id: number; objectSize: number; mustUnderstand: boolean } {
+  private memberHeaderV2(): {
+    id: number;
+    objectSize: number;
+    mustUnderstand: boolean;
+    lengthCode: number;
+  } {
     const header = this.uint32();
     // EMHEADER = (M_FLAG<<31) + (LC<<28) + M.id
     // M is the member of a structure
@@ -272,7 +283,7 @@ export class CdrReader {
 
     const objectSize = this.emHeaderObjectSize(lengthCode);
 
-    return { mustUnderstand, id, objectSize };
+    return { mustUnderstand, id, objectSize, lengthCode };
   }
 
   /** Uses the length code to derive the member object size in
@@ -282,13 +293,10 @@ export class CdrReader {
     // 7.4.3.4.2 Member Header (EMHEADER), Length Code (LC) and NEXTINT
     switch (lengthCode) {
       case 0:
-        return 1;
       case 1:
-        return 2;
       case 2:
-        return 4;
       case 3:
-        return 8;
+        return lengthCodeToObjectSizes[lengthCode];
       // LC > 3 -> NEXTINT exists after header
       case 4:
       case 5:
