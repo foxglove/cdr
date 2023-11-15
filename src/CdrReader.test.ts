@@ -302,7 +302,7 @@ Object {
     [false, 1028, 4, 2], // LC 2, 4 bytes
     [false, 65, 8, 3], // LC 3, 8 bytes
     [true, 63, 9, 4], // LC 4, any size
-    [false, 127, 0xffffffff, 5], // LC
+    [false, 127, 0xffffffff, 5], // LC 5, any size
     [false, 65, 12, 6], // LC 6, multiple of 4 bytes
     [false, 65, 32, 7], // LC 7, multiple of 8 bytes
   ])(
