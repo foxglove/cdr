@@ -305,7 +305,6 @@ Object {
     [false, 127, 0xffffffff, 5], // LC
     [false, 65, 12, 6], // LC 6, multiple of 4 bytes
     [false, 65, 32, 7], // LC 7, multiple of 8 bytes
-    [false, 127, 0xffffffff, 5],
   ])(
     "round trips EMHEADER values with mustUnderstand: %d, id: %d, size: %d, and lengthCode: %d",
     (mustUnderstand: boolean, id: number, objectSize: number, lengthCode: number) => {
