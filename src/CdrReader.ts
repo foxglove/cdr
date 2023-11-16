@@ -1,7 +1,7 @@
 import { EncapsulationKind } from "./EncapsulationKind";
 import { getEncapsulationKindInfo } from "./getEncapsulationKindInfo";
 import { isBigEndian } from "./isBigEndian";
-import { lengthCodeToObjectSizes } from "./lengthCodes";
+import { LengthCode, lengthCodeToObjectSizes } from "./lengthCodes";
 import { EXTENDED_PID, SENTINEL_PID } from "./reservedPIDs";
 
 interface Indexable {
@@ -188,8 +188,9 @@ export class CdrReader {
   /**
    * Reads the member header (EMHEADER) and returns the member ID, mustUnderstand flag, and object size with optional length code
    * The length code is only present in CDR2 and should prompt objectSize to be used in place of sequence length if applicable.
+   * See Extensible and Dynamic Topic Types (DDS-XTypes) v1.3 @ `7.4.3.4.2` for more info about CDR2 EMHEADER composition.
    */
-  emHeader(): { mustUnderstand: boolean; id: number; objectSize: number; lengthCode?: number } {
+  emHeader(): { mustUnderstand: boolean; id: number; objectSize: number; lengthCode?: LengthCode } {
     if (this.isCDR2) {
       return this.memberHeaderV2();
     } else {
@@ -270,7 +271,7 @@ export class CdrReader {
     id: number;
     objectSize: number;
     mustUnderstand: boolean;
-    lengthCode: number;
+    lengthCode: LengthCode;
   } {
     const header = this.uint32();
     // EMHEADER = (M_FLAG<<31) + (LC<<28) + M.id
@@ -278,7 +279,7 @@ export class CdrReader {
     // M_FLAG is the value of the Must Understand option for the member
     const mustUnderstand = Math.abs((header & 0x80000000) >> 31) === 1;
     // LC is the value of the Length Code for the member.
-    const lengthCode = (header & 0x70000000) >> 28;
+    const lengthCode = ((header & 0x70000000) >> 28) as LengthCode;
     const id = header & 0x0fffffff;
 
     const objectSize = this.emHeaderObjectSize(lengthCode);
@@ -289,7 +290,7 @@ export class CdrReader {
   /** Uses the length code to derive the member object size in
    * the EMHEADER, sometimes reading NEXTINT (the next uint32
    * following the header) from the buffer */
-  private emHeaderObjectSize(lengthCode: number) {
+  private emHeaderObjectSize(lengthCode: LengthCode) {
     // 7.4.3.4.2 Member Header (EMHEADER), Length Code (LC) and NEXTINT
     switch (lengthCode) {
       case 0:
@@ -308,6 +309,7 @@ export class CdrReader {
         return 8 * this.uint32();
       default:
         throw new Error(
+          // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
           `Invalid length code ${lengthCode} in EMHEADER at offset ${this.offset - 4}`,
         );
     }

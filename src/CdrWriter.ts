@@ -1,7 +1,7 @@
 import { EncapsulationKind } from "./EncapsulationKind";
 import { getEncapsulationKindInfo } from "./getEncapsulationKindInfo";
 import { isBigEndian } from "./isBigEndian";
-import { getLengthCodeForObjectSize, lengthCodeToObjectSizes } from "./lengthCodes";
+import { LengthCode, getLengthCodeForObjectSize, lengthCodeToObjectSizes } from "./lengthCodes";
 import { EXTENDED_PID, SENTINEL_PID } from "./reservedPIDs";
 
 export type CdrWriterOpts = {
@@ -185,8 +185,23 @@ export class CdrWriter {
   }
 
   /**
-   * Writes the member header (EMHEADER): mustUnderstand flag, the member ID, object size, and optional length code for CDR2 emHeaders
+   * Writes the member header (EMHEADER)
    * Accomodates for PL_CDR and PL_CDR2 based on the CdrWriter constructor options
+   *
+   * @param mustUnderstand - Whether the member is required to be understood by the receiver
+   * @param id - The member ID
+   * @param objectSize - The size of the member in bytes
+   * @param lengthCode - Optional length code for CDR2 emHeaders.
+   * lengthCode values [5-7] allow the emHeader object size to take the place of the normally encoded member length.
+   *
+   * NOTE: Dynamically determines default value if not provided that does not affect serialization ie will use lengthCode values [0-4].
+   *
+   * From Extensible and Dynamic Topic Types in DDS-XTypes v1.3 @ `7.4.3.4.2`:
+   * "EMHEADER1 with LC values 5 to 7 also affect the serialization/deserialization virtual machine in that they cause NEXTINT to be
+   * reused also as part of the serialized member. This is useful because the serialization of certain members also starts with an
+   * integer length, which would take exactly the same value as NEXTINT. Therefore the use of length codes 5 to 7 saves 4 bytes in
+   * the serialization."
+   * @returns - CdrWriter instance
    */
   emHeader(
     mustUnderstand: boolean,
@@ -195,7 +210,7 @@ export class CdrWriter {
     lengthCode?: number,
   ): CdrWriter {
     return this.isCDR2
-      ? this.memberHeaderV2(mustUnderstand, id, objectSize, lengthCode)
+      ? this.memberHeaderV2(mustUnderstand, id, objectSize, lengthCode as LengthCode)
       : this.memberHeaderV1(mustUnderstand, id, objectSize);
   }
 
@@ -241,7 +256,7 @@ export class CdrWriter {
     mustUnderstand: boolean,
     id: number,
     objectSize: number,
-    lengthCode?: number,
+    lengthCode?: LengthCode,
   ): CdrWriter {
     if (id > 0x0fffffff) {
       // first byte is used for M_FLAG and LC
@@ -252,7 +267,7 @@ export class CdrWriter {
     // M_FLAG is the value of the Must Understand option for the member
     const mustUnderstandFlag = mustUnderstand ? 1 << 31 : 0;
     // LC is the value of the Length Code for the member.
-    const finalLengthCode = lengthCode ?? getLengthCodeForObjectSize(objectSize);
+    const finalLengthCode: LengthCode = lengthCode ?? getLengthCodeForObjectSize(objectSize);
 
     const header = mustUnderstandFlag | (finalLengthCode << 28) | id;
 
@@ -282,7 +297,7 @@ export class CdrWriter {
             "Cannot write a length code 6 header with an object size that is not a multiple of 4",
           );
         }
-        this.uint32(Math.floor(objectSize / 4));
+        this.uint32(objectSize >> 2);
         break;
       case 7:
         if (objectSize % 8 !== 0) {
@@ -290,8 +305,11 @@ export class CdrWriter {
             "Cannot write a length code 7 header with an object size that is not a multiple of 8",
           );
         }
-        this.uint32(Math.floor(objectSize / 8));
+        this.uint32(objectSize >> 3);
         break;
+      default:
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+        throw new Error(`Unexpected length code ${finalLengthCode}`);
     }
 
     return this;
