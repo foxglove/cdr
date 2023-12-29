@@ -26,13 +26,14 @@ type ArrayValueGetter =
   | "getFloat32"
   | "getFloat64";
 
+const textDecoder = new TextDecoder("utf8");
+
 export class CdrReader {
   private view: DataView;
   private littleEndian: boolean;
   private hostLittleEndian: boolean;
   private eightByteAlignment: number; // Alignment for 64-bit values, 4 on CDR2 8 on CDR1
   private isCDR2: boolean;
-  private textDecoder = new TextDecoder("utf8");
 
   /** Origin offset into stream used for alignment */
   private origin = 0;
@@ -174,7 +175,7 @@ export class CdrReader {
       return "";
     }
     const data = new Uint8Array(this.view.buffer, this.view.byteOffset + this.offset, length - 1);
-    const value = this.textDecoder.decode(data);
+    const value = textDecoder.decode(data);
     this.offset += length;
     return value;
   }
