@@ -10,6 +10,8 @@ export type CdrWriterOpts = {
   kind?: EncapsulationKind;
 };
 
+const textEncoder = new TextEncoder();
+
 export class CdrWriter {
   static DEFAULT_CAPACITY = 16;
   static BUFFER_COPY_THRESHOLD = 10;
@@ -21,7 +23,6 @@ export class CdrWriter {
   private buffer: ArrayBuffer;
   private array: Uint8Array;
   private view: DataView;
-  private textEncoder = new TextEncoder();
   private offset: number;
   /** Origin offset into stream used for alignment */
   private origin: number;
@@ -167,7 +168,7 @@ export class CdrWriter {
       this.uint32(strlen + 1); // Add one for the null terminator
     }
     this.resizeIfNeeded(strlen + 1);
-    this.textEncoder.encodeInto(value, new Uint8Array(this.buffer, this.offset, strlen));
+    textEncoder.encodeInto(value, new Uint8Array(this.buffer, this.offset, strlen));
     this.view.setUint8(this.offset + strlen, 0);
     this.offset += strlen + 1;
     return this;
