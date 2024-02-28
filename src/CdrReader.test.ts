@@ -249,6 +249,15 @@ Object {
     expect(reader.string(length)).toEqual("test");
   });
 
+  it("returns readSentinelHeader==true if the emHeader read a sentinel header", () => {
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
+    writer.sentinelHeader();
+
+    const reader = new CdrReader(writer.data);
+    const emHeader = reader.emHeader();
+    expect(emHeader.readSentinelHeader).toEqual(true);
+  });
+
   it("errors when expecting to read a sentinel header but receives non-sentinel_PID value", () => {
     const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
     writer.emHeader(false, 100, 4);
