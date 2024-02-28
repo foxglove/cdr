@@ -190,8 +190,15 @@ export class CdrReader {
    * Reads the member header (EMHEADER) and returns the member ID, mustUnderstand flag, and object size with optional length code
    * The length code is only present in CDR2 and should prompt objectSize to be used in place of sequence length if applicable.
    * See Extensible and Dynamic Topic Types (DDS-XTypes) v1.3 @ `7.4.3.4.2` for more info about CDR2 EMHEADER composition.
+   * If a sentinelHeader was read (PL_CDR v1), the readSentinelHeader flag is set to true.
    */
-  emHeader(): { mustUnderstand: boolean; id: number; objectSize: number; lengthCode?: LengthCode } {
+  emHeader(): {
+    mustUnderstand: boolean;
+    id: number;
+    objectSize: number;
+    lengthCode?: LengthCode;
+    readSentinelHeader?: boolean;
+  } {
     if (this.isCDR2) {
       return this.memberHeaderV2();
     } else {
@@ -204,6 +211,7 @@ export class CdrReader {
     id: number;
     objectSize: number;
     mustUnderstand: boolean;
+    readSentinelHeader?: boolean;
   } {
     // 4-byte header with two 16-bit fields
     this.align(4);
@@ -220,7 +228,9 @@ export class CdrReader {
     // Indicates the end of the parameter list structure
     const sentinelPIDFlag = (idHeader & 0x3fff) === SENTINEL_PID;
     if (sentinelPIDFlag) {
-      throw Error("Expected Member Header but got SENTINEL_PID Flag");
+      // Return that we have read the sentinel header when we expected to read an emHeader.
+      // This can happen for absent optional members at the end of a struct.
+      return { id: SENTINEL_PID, objectSize: 0, mustUnderstand: false, readSentinelHeader: true };
     }
 
     // Indicates that the ID should be ignored
