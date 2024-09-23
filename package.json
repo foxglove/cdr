@@ -1,5 +1,5 @@
 {
-  "name": "@foxglove/cdr",
+  "name": "@lichtblick/cdr",
   "version": "3.3.0",
   "description": "Common Data Representation serialization and deserialization library",
   "license": "MIT",
@@ -15,13 +15,13 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/foxglove/cdr.git"
+    "url": "https://github.com/lichtblick/cdr.git"
   },
   "author": {
-    "name": "Foxglove Technologies",
-    "email": "support@foxglove.dev"
+    "name": "Lichtblick",
+    "email": "lichtblick@bmwgroup.com"
   },
-  "homepage": "https://github.com/foxglove/cdr",
+  "homepage": "https://github.com/lichtblick/cdr",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
   "files": [
@@ -41,21 +41,24 @@
     "node": ">= 14"
   },
   "devDependencies": {
-    "@foxglove/eslint-plugin": "0.17.0",
-    "@types/jest": "27.0.1",
-    "@typescript-eslint/eslint-plugin": "4.31.1",
-    "@typescript-eslint/parser": "4.31.1",
-    "eslint": "7.32.0",
+    "@lichtblick/eslint-plugin": "^1.0.0",
+    "@types/jest": "29.5.12",
+    "@typescript-eslint/eslint-plugin": "v6",
+    "@typescript-eslint/parser": "v6",
+    "acorn": "^8.12.1",
+    "eslint": "8.50.0",
     "eslint-config-prettier": "8.3.0",
     "eslint-plugin-es": "4.1.0",
     "eslint-plugin-filenames": "1.3.2",
-    "eslint-plugin-import": "2.24.2",
-    "eslint-plugin-jest": "24.4.0",
-    "eslint-plugin-prettier": "4.0.0",
-    "jest": "27.2.0",
-    "prettier": "2.4.0",
+    "eslint-plugin-import": "^2.30.0",
+    "eslint-plugin-jest": "27.6.3",
+    "eslint-plugin-prettier": "5.1.3",
+    "espree": "^9.1.0",
+    "jest": "29.7.0",
+    "prettier": "3.3.2",
     "rimraf": "3.0.2",
-    "ts-jest": "27.0.5",
-    "typescript": "4.4.3"
-  }
+    "ts-jest": "^29.2.5",
+    "typescript": "5.3.3"
+  },
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }

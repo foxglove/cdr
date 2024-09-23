@@ -1,8 +1,8 @@
-# @foxglove/cdr
+# @lichtblick/cdr
 
 > _Common Data Representation serialization and deserialization library_
 
-[![npm version](https://img.shields.io/npm/v/@foxglove/cdr.svg?style=flat)](https://www.npmjs.com/package/@foxglove/cdr)
+[![npm version](https://img.shields.io/npm/v/@lichtblick/cdr.svg?style=flat)](https://www.npmjs.com/package/@lichtblick/cdr)
 
 ## Introduction
 
@@ -15,7 +15,7 @@ CDR is found in OMG DDS (Data Distributed Service) implementations such as the R
 ## Usage
 
 ```Typescript
-import { CdrReader, CdrSizeCalculator, CdrWriter } from "@foxglove/cdr";
+import { CdrReader, CdrSizeCalculator, CdrWriter } from "@lichtblick/cdr";
 
 const calc = new CdrSizeCalculator();
 calc.int8();
@@ -67,14 +67,10 @@ console.log(reader.sequenceLength());
 
 ## License
 
-@foxglove/cdr is licensed under the [MIT License](https://opensource.org/licenses/MIT).
+@lichtblick/cdr is licensed under the [MIT License](https://opensource.org/licenses/MIT).
 
 ## Releasing
 
 1. Run `yarn version --[major|minor|patch]` to bump version
 2. Run `git push && git push --tags` to push new tag
 3. GitHub Actions will take care of the rest
-
-## Stay in touch
-
-Join our [Slack channel](https://foxglove.dev/slack) to ask questions, share feedback, and stay up to date on what our team is working on.

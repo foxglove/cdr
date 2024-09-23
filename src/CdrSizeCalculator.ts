@@ -1,55 +1,55 @@
 export class CdrSizeCalculator {
   // Two bytes for Representation Id and two bytes for Options
-  private offset = 4;
+  #offset = 4;
 
   get size(): number {
-    return this.offset;
+    return this.#offset;
   }
 
   int8(): number {
-    return this.incrementAndReturn(1);
+    return this.#incrementAndReturn(1);
   }
 
   uint8(): number {
-    return this.incrementAndReturn(1);
+    return this.#incrementAndReturn(1);
   }
 
   int16(): number {
-    return this.incrementAndReturn(2);
+    return this.#incrementAndReturn(2);
   }
 
   uint16(): number {
-    return this.incrementAndReturn(2);
+    return this.#incrementAndReturn(2);
   }
 
   int32(): number {
-    return this.incrementAndReturn(4);
+    return this.#incrementAndReturn(4);
   }
 
   uint32(): number {
-    return this.incrementAndReturn(4);
+    return this.#incrementAndReturn(4);
   }
 
   int64(): number {
-    return this.incrementAndReturn(8);
+    return this.#incrementAndReturn(8);
   }
 
   uint64(): number {
-    return this.incrementAndReturn(8);
+    return this.#incrementAndReturn(8);
   }
 
   float32(): number {
-    return this.incrementAndReturn(4);
+    return this.#incrementAndReturn(4);
   }
 
   float64(): number {
-    return this.incrementAndReturn(8);
+    return this.#incrementAndReturn(8);
   }
 
   string(length: number): number {
     this.uint32();
-    this.offset += length + 1; // Add one for the null terminator
-    return this.offset;
+    this.#offset += length + 1; // Add one for the null terminator
+    return this.#offset;
   }
 
   sequenceLength(): number {
@@ -58,12 +58,12 @@ export class CdrSizeCalculator {
 
   // Increments the offset by `byteCount` and any required padding bytes and
   // returns the new offset
-  private incrementAndReturn(byteCount: number): number {
-    const alignment = (this.offset - 4) % byteCount;
+  #incrementAndReturn(byteCount: number): number {
+    const alignment = (this.#offset - 4) % byteCount;
     if (alignment > 0) {
-      this.offset += byteCount - alignment;
+      this.#offset += byteCount - alignment;
     }
-    this.offset += byteCount;
-    return this.offset;
+    this.#offset += byteCount;
+    return this.#offset;
   }
 }
