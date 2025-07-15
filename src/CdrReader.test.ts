@@ -334,6 +334,64 @@ Object {
   );
 });
 
+describe("clone()", () => {
+  it("creates an independent reader with the same state", () => {
+    const writer = new CdrWriter({
+      kind: EncapsulationKind.CDR2_LE,
+    });
+    writer.int32(42);
+    writer.float64(2.67);
+
+    const reader = new CdrReader(writer.data);
+    expect(reader.int32()).toBe(42);
+
+    const clone = reader.clone();
+    expect(clone.offset).toBe(reader.offset);
+    expect(clone.byteLength).toBe(reader.byteLength);
+
+    // Advance the original reader
+    expect(reader.float64()).toBe(2.67);
+    expect(reader.offset).toBe(4 /* SerializedPayload header */ + 4 /* int32 */ + 8 /* float64 */);
+    expect(clone.offset).toBe(4 /* SerializedPayload header */ + 4 /* int32 */);
+
+    // The clone should still be able to read the float64 from the same position
+    expect(clone.float64()).toBe(2.67);
+  });
+});
+
+describe("limit()", () => {
+  it("restricts the readable range of the reader", () => {
+    const writer = new CdrWriter();
+    writer.int32(1);
+    writer.int32(2);
+    writer.int32(3);
+
+    const reader = new CdrReader(writer.data);
+    expect(reader.int32()).toBe(1);
+    reader.limit(4);
+    expect(reader.int32()).toBe(2);
+    expect(reader.isAtEnd()).toBe(true);
+    // Reading a third int32 should take us past the end of the buffer.
+    expect(() => reader.int32()).toThrow();
+  });
+
+  it("throws if the length is beyond the end of the buffer", () => {
+    const writer = new CdrWriter();
+    writer.int32(1);
+    const reader = new CdrReader(writer.data);
+    expect(() => reader.limit(1000)).toThrow(RangeError);
+  });
+
+  it("prevents the limit from being relaxed even if it would be within the buffer", () => {
+    const writer = new CdrWriter();
+    writer.int32(1);
+    const reader = new CdrReader(writer.data);
+    reader.limit(2);
+    reader.limit(1);
+    expect(() => reader.limit(2)).toThrow(RangeError);
+  });
+});
+
 function writeArray(writer: CdrWriter, setter: Setter, array: number[]): void {
   writer.sequenceLength(array.length);
   for (const value of array) {
