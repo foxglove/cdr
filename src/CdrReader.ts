@@ -407,6 +407,36 @@ export class CdrReader {
     this.offset = offset;
   }
 
+  /**
+   * Duplicate this reader. The underlying buffer is reused and not copied.
+   */
+  clone(): CdrReader {
+    const clone = new CdrReader(this.view);
+    clone.offset = this.offset;
+    clone.origin = this.origin;
+    return clone;
+  }
+
+  /**
+   * Limit the reader to a given number of bytes.
+   * @param length The number of bytes to limit the reader to.
+   */
+  limit(length: number): void {
+    const newByteLength = this.offset + length;
+    if (newByteLength <= this.view.byteLength) {
+      this.view = new DataView(this.view.buffer, this.view.byteOffset, newByteLength);
+    } else {
+      throw new RangeError(`length ${length} exceeds byte length of view`);
+    }
+  }
+
+  /**
+   * Returns `true` if the reader is at the end of the buffer, or `false` otherwise.
+   */
+  isAtEnd(): boolean {
+    return this.offset >= this.view.byteLength;
+  }
+
   private align(size: number): void {
     const alignment = (this.offset - this.origin) % size;
     if (alignment > 0) {
