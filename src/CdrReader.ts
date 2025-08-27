@@ -423,7 +423,7 @@ export class CdrReader {
    */
   seek(relativeOffset: number): void {
     const newOffset = this.offset + relativeOffset;
-    if (newOffset < 4 || newOffset >= this.view.byteLength) {
+    if (newOffset < 4 || newOffset > this.view.byteLength) {
       throw new Error(`seek(${relativeOffset}) failed, ${newOffset} is outside the data range`);
     }
     this.offset = newOffset;
@@ -435,7 +435,7 @@ export class CdrReader {
    * @param offset An absolute byte offset in the range of [4-byteLength)
    */
   seekTo(offset: number): void {
-    if (offset < 4 || offset >= this.view.byteLength) {
+    if (offset < 4 || offset > this.view.byteLength) {
       throw new Error(`seekTo(${offset}) failed, value is outside the data range`);
     }
     this.offset = offset;

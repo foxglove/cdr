@@ -419,6 +419,16 @@ describe("limit()", () => {
     const reader = new CdrReader(writer.data);
     expect(() => reader.isPresentFlag()).toThrow(Error);
   });
+  it("can seek to end of the buffer", () => {
+    const writer = new CdrWriter({ size: 8 });
+    writer.int32(1);
+    const reader = new CdrReader(writer.data);
+    // important because sometimes we seek to the end of objects in the buffer
+    // and it might be the end of the buffer.
+    reader.seekTo(8);
+    expect(reader.isAtEnd()).toBe(true);
+    expect(() => reader.int32()).toThrow(RangeError);
+  });
 });
 
 function writeArray(writer: CdrWriter, setter: Setter, array: number[]): void {
