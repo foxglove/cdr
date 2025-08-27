@@ -390,20 +390,6 @@ describe("limit()", () => {
     reader.limit(1);
     expect(() => reader.limit(2)).toThrow(RangeError);
   });
-  it("can detect sentinel header using maybeConsumeSentinelHeader", () => {
-    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
-    writer.uint16(25);
-    writer.sentinelHeader();
-    const reader = new CdrReader(writer.data);
-    let offsetBefore = reader.offset;
-    expect(reader.maybeConsumeSentinelHeader()).toBe(false);
-    expect(reader.offset).toBe(offsetBefore);
-    const value = reader.uint16();
-    expect(value).toBe(25);
-    offsetBefore = reader.offset;
-    expect(reader.maybeConsumeSentinelHeader()).toBe(true);
-    expect(reader.offset).not.toBe(offsetBefore);
-  });
 
   it("can read and write present flags when using CDR2", () => {
     const writer = new CdrWriter({ kind: EncapsulationKind.CDR2_LE });

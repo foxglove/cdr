@@ -232,6 +232,9 @@ export class CdrReader {
     // Indicates the end of the parameter list structure
     const sentinelPIDFlag = (idHeader & 0x3fff) === SENTINEL_PID;
     if (sentinelPIDFlag) {
+      // Read another uint16 because the sentinel header has another uint16 after writing the flag
+      this.uint16();
+
       // Return that we have read the sentinel header when we expected to read an emHeader.
       // This can happen for absent optional members at the end of a struct.
       return { id: SENTINEL_PID, objectSize: 0, mustUnderstand: false, readSentinelHeader: true };
@@ -273,24 +276,6 @@ export class CdrReader {
     }
     const isPresent = Boolean(this.uint8());
     return isPresent;
-  }
-
-  /**
-   * If there is a sentinel header next in the stream, then consume it and return true.
-   * Otherwise, return false, and leave the buffer position in the same place.
-   * Noop for CDR2.
-   */
-  maybeConsumeSentinelHeader(): boolean {
-    if (this.isCDR2) {
-      return false;
-    }
-    const originalOffset = this.offset;
-    const isSentinelHeaderNext = this.sentinelHeader();
-    // only set the offset back if we didn't read the sentinel header
-    if (!isSentinelHeaderNext) {
-      this.offset = originalOffset;
-    }
-    return isSentinelHeaderNext;
   }
 
   /** Reads the PID_SENTINEL value if encapsulation kind supports it (PL_CDR version 1)
