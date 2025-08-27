@@ -258,12 +258,12 @@ Object {
     expect(emHeader.readSentinelHeader).toEqual(true);
   });
 
-  it("errors when expecting to read a sentinel header but receives non-sentinel_PID value", () => {
+  it("returns false when expecting to read a sentinel header but receives non-sentinel_PID value", () => {
     const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
     writer.emHeader(false, 100, 4);
 
     const reader = new CdrReader(writer.data);
-    expect(() => reader.sentinelHeader()).toThrowError(/Expected sentinel_pid/i);
+    expect(reader.sentinelHeader()).toBe(false);
   });
 
   it.each([[1], [2], [4], [8], [0x7fffffff]])(
@@ -389,6 +389,35 @@ describe("limit()", () => {
     reader.limit(2);
     reader.limit(1);
     expect(() => reader.limit(2)).toThrow(RangeError);
+  });
+  it("can detect sentinel header using maybeConsumeSentinelHeader", () => {
+    const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
+    writer.uint16(25);
+    writer.sentinelHeader();
+    const reader = new CdrReader(writer.data);
+    let offsetBefore = reader.offset;
+    expect(reader.maybeConsumeSentinelHeader()).toBe(false);
+    expect(reader.offset).toBe(offsetBefore);
+    const value = reader.uint16();
+    expect(value).toBe(25);
+    offsetBefore = reader.offset;
+    expect(reader.maybeConsumeSentinelHeader()).toBe(true);
+    expect(reader.offset).not.toBe(offsetBefore);
+  });
+
+  it("can read and write present flags when using CDR2", () => {
+    const writer = new CdrWriter({ kind: EncapsulationKind.CDR2_LE });
+    writer.presentFlag(true);
+    writer.presentFlag(false);
+    const reader = new CdrReader(writer.data);
+    expect(reader.isPresentFlag()).toBe(true);
+    expect(reader.isPresentFlag()).toBe(false);
+  });
+  it("can't read present flags when using CDR1", () => {
+    const writer = new CdrWriter({ kind: EncapsulationKind.CDR_LE });
+    writer.uint8(1); // placeholder, won't be read
+    const reader = new CdrReader(writer.data);
+    expect(() => reader.isPresentFlag()).toThrow(Error);
   });
 });
 

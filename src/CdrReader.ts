@@ -33,7 +33,11 @@ export class CdrReader {
   private littleEndian: boolean;
   private hostLittleEndian: boolean;
   private eightByteAlignment: number; // Alignment for 64-bit values, 4 on CDR2 8 on CDR1
-  private isCDR2: boolean;
+  /**
+   * Whether the data buffer of this reader is using CDR2 encoding.
+   * Important for message reading logic.
+   */
+  readonly isCDR2: boolean;
 
   /** Origin offset into stream used for alignment */
   private origin = 0;
@@ -260,21 +264,51 @@ export class CdrReader {
     this.origin = this.offset;
   }
 
-  /** Reads the PID_SENTINEL value if encapsulation kind supports it (PL_CDR version 1)*/
-  sentinelHeader(): void {
+  /** Reads boolean flag for optional members in CDR2
+   * Will throw an error if called for CDR1.
+   */
+  isPresentFlag(): boolean {
+    if (!this.isCDR2) {
+      throw new Error("isPresentFlag is only supported for CDR2");
+    }
+    const isPresent = Boolean(this.uint8());
+    return isPresent;
+  }
+
+  /**
+   * If there is a sentinel header next in the stream, then consume it and return true.
+   * Otherwise, return false, and leave the buffer position in the same place.
+   * Noop for CDR2.
+   */
+  maybeConsumeSentinelHeader(): boolean {
+    if (this.isCDR2) {
+      return false;
+    }
+    const originalOffset = this.offset;
+    const isSentinelHeaderNext = this.sentinelHeader();
+    // only set the offset back if we didn't read the sentinel header
+    if (!isSentinelHeaderNext) {
+      this.offset = originalOffset;
+    }
+    return isSentinelHeaderNext;
+  }
+
+  /** Reads the PID_SENTINEL value if encapsulation kind supports it (PL_CDR version 1)
+   * @returns true if the sentinel header was read, false otherwise
+   */
+  sentinelHeader(): boolean {
     if (!this.isCDR2) {
       this.align(4);
       const header = this.uint16();
       // Indicates the end of the parameter list structure
       const sentinelPIDFlag = (header & 0x3fff) === SENTINEL_PID;
       if (!sentinelPIDFlag) {
-        throw Error(
-          `Expected SENTINEL_PID (${SENTINEL_PID.toString(16)}) flag, but got ${header.toString(
-            16,
-          )}`,
-        );
+        return false;
       }
       this.uint16();
+      return true;
+    } else {
+      return false;
     }
   }
 
