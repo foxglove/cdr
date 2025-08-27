@@ -33,7 +33,11 @@ export class CdrReader {
   private littleEndian: boolean;
   private hostLittleEndian: boolean;
   private eightByteAlignment: number; // Alignment for 64-bit values, 4 on CDR2 8 on CDR1
-  private isCDR2: boolean;
+  /**
+   * Whether the data buffer of this reader is using CDR2 encoding.
+   * Important for message reading logic.
+   */
+  readonly isCDR2: boolean;
 
   /** Origin offset into stream used for alignment */
   private origin = 0;
@@ -228,6 +232,9 @@ export class CdrReader {
     // Indicates the end of the parameter list structure
     const sentinelPIDFlag = (idHeader & 0x3fff) === SENTINEL_PID;
     if (sentinelPIDFlag) {
+      // Read another uint16 because the sentinel header has another uint16 after writing the flag
+      this.uint16();
+
       // Return that we have read the sentinel header when we expected to read an emHeader.
       // This can happen for absent optional members at the end of a struct.
       return { id: SENTINEL_PID, objectSize: 0, mustUnderstand: false, readSentinelHeader: true };
@@ -260,21 +267,33 @@ export class CdrReader {
     this.origin = this.offset;
   }
 
-  /** Reads the PID_SENTINEL value if encapsulation kind supports it (PL_CDR version 1)*/
-  sentinelHeader(): void {
+  /** Reads boolean flag for optional members in CDR2
+   * Will throw an error if called for CDR1.
+   */
+  isPresentFlag(): boolean {
+    if (!this.isCDR2) {
+      throw new Error("isPresentFlag is only supported for CDR2");
+    }
+    const isPresent = Boolean(this.uint8());
+    return isPresent;
+  }
+
+  /** Reads the PID_SENTINEL value if encapsulation kind supports it (PL_CDR version 1)
+   * @returns true if the sentinel header was read, false otherwise
+   */
+  sentinelHeader(): boolean {
     if (!this.isCDR2) {
       this.align(4);
       const header = this.uint16();
       // Indicates the end of the parameter list structure
       const sentinelPIDFlag = (header & 0x3fff) === SENTINEL_PID;
       if (!sentinelPIDFlag) {
-        throw Error(
-          `Expected SENTINEL_PID (${SENTINEL_PID.toString(16)}) flag, but got ${header.toString(
-            16,
-          )}`,
-        );
+        return false;
       }
       this.uint16();
+      return true;
+    } else {
+      return false;
     }
   }
 
@@ -389,7 +408,7 @@ export class CdrReader {
    */
   seek(relativeOffset: number): void {
     const newOffset = this.offset + relativeOffset;
-    if (newOffset < 4 || newOffset >= this.view.byteLength) {
+    if (newOffset < 4 || newOffset > this.view.byteLength) {
       throw new Error(`seek(${relativeOffset}) failed, ${newOffset} is outside the data range`);
     }
     this.offset = newOffset;
@@ -401,7 +420,7 @@ export class CdrReader {
    * @param offset An absolute byte offset in the range of [4-byteLength)
    */
   seekTo(offset: number): void {
-    if (offset < 4 || offset >= this.view.byteLength) {
+    if (offset < 4 || offset > this.view.byteLength) {
       throw new Error(`seekTo(${offset}) failed, value is outside the data range`);
     }
     this.offset = offset;

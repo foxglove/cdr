@@ -16,9 +16,10 @@ export class CdrWriter {
   static DEFAULT_CAPACITY = 16;
   static BUFFER_COPY_THRESHOLD = 10;
 
+  public readonly isCDR2: boolean;
+
   private littleEndian: boolean;
   private hostLittleEndian: boolean;
-  private isCDR2: boolean;
   private eightByteAlignment: number; // Alignment for 64-bit values, 4 on CDR2 8 on CDR1
   private buffer: ArrayBuffer;
   private array: Uint8Array;
@@ -241,6 +242,17 @@ export class CdrWriter {
   /** Sets the origin to the offset (DDS-XTypes Spec: `PUSH(ORIGIN = 0)`)*/
   private resetOrigin() {
     this.origin = this.offset;
+  }
+
+  /** Writes boolean flag for optional members in CDR2
+   * @throws Error if called for CDR1.
+   */
+  presentFlag(value: boolean): CdrWriter {
+    if (!this.isCDR2) {
+      throw new Error("presentFlag is only supported for CDR2");
+    }
+    this.uint8(value ? 1 : 0);
+    return this;
   }
 
   /** Writes the PID_SENTINEL value if encapsulation supports it*/

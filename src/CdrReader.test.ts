@@ -258,12 +258,12 @@ Object {
     expect(emHeader.readSentinelHeader).toEqual(true);
   });
 
-  it("errors when expecting to read a sentinel header but receives non-sentinel_PID value", () => {
+  it("returns false when expecting to read a sentinel header but receives non-sentinel_PID value", () => {
     const writer = new CdrWriter({ kind: EncapsulationKind.PL_CDR_LE });
     writer.emHeader(false, 100, 4);
 
     const reader = new CdrReader(writer.data);
-    expect(() => reader.sentinelHeader()).toThrowError(/Expected sentinel_pid/i);
+    expect(reader.sentinelHeader()).toBe(false);
   });
 
   it.each([[1], [2], [4], [8], [0x7fffffff]])(
@@ -389,6 +389,31 @@ describe("limit()", () => {
     reader.limit(2);
     reader.limit(1);
     expect(() => reader.limit(2)).toThrow(RangeError);
+  });
+
+  it("can read and write present flags when using CDR2", () => {
+    const writer = new CdrWriter({ kind: EncapsulationKind.CDR2_LE });
+    writer.presentFlag(true);
+    writer.presentFlag(false);
+    const reader = new CdrReader(writer.data);
+    expect(reader.isPresentFlag()).toBe(true);
+    expect(reader.isPresentFlag()).toBe(false);
+  });
+  it("can't read present flags when using CDR1", () => {
+    const writer = new CdrWriter({ kind: EncapsulationKind.CDR_LE });
+    writer.uint8(1); // placeholder, won't be read
+    const reader = new CdrReader(writer.data);
+    expect(() => reader.isPresentFlag()).toThrowError(/only supported for CDR2/i);
+  });
+  it("can seek to end of the buffer", () => {
+    const writer = new CdrWriter({ size: 8 });
+    writer.int32(1);
+    const reader = new CdrReader(writer.data);
+    // important because sometimes we seek to the end of objects in the buffer
+    // and it might be the end of the buffer.
+    reader.seekTo(8);
+    expect(reader.isAtEnd()).toBe(true);
+    expect(() => reader.int32()).toThrow(RangeError);
   });
 });
 
