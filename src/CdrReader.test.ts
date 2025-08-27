@@ -403,7 +403,7 @@ describe("limit()", () => {
     const writer = new CdrWriter({ kind: EncapsulationKind.CDR_LE });
     writer.uint8(1); // placeholder, won't be read
     const reader = new CdrReader(writer.data);
-    expect(() => reader.isPresentFlag()).toThrow(Error);
+    expect(() => reader.isPresentFlag()).toThrowError(/only supported for CDR2/i);
   });
   it("can seek to end of the buffer", () => {
     const writer = new CdrWriter({ size: 8 });
