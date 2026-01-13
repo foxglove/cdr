@@ -15,7 +15,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/foxglove/cdr.git"
+    "url": "https://github.com/foxglove/cdr.git"
   },
   "author": {
     "name": "Foxglove Technologies",
