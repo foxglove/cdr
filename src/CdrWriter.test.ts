@@ -101,7 +101,7 @@ describe("CdrWriter", () => {
     writer.uint32BE(0x12345678);
     writer.uint64BE(0x123456789abcdef0n);
     writer.float32(-9.14);
-    writer.float64(1.7976931348623158e100);
+    writer.float64(1.7976931348623e100);
     writer.string("abc");
     writer.sequenceLength(42);
     const data = writer.data;
@@ -120,7 +120,7 @@ describe("CdrWriter", () => {
     expect(reader.uint32BE()).toEqual(0x12345678);
     expect(reader.uint64BE()).toEqual(0x123456789abcdef0n);
     expect(reader.float32()).toBeCloseTo(-9.14);
-    expect(reader.float64()).toBeCloseTo(1.7976931348623158e100);
+    expect(reader.float64()).toBeCloseTo(1.7976931348623e100);
     expect(reader.string()).toEqual("abc");
     expect(reader.sequenceLength()).toEqual(42);
   });

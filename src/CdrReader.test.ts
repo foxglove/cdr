@@ -131,7 +131,7 @@ describe("CdrReader", () => {
   it.each([
     ["float32Array", "float32", [-3.835, 0, Math.PI], 6],
     ["float64Array", "float64", [-3.835, 0, Math.PI], 15],
-    ["float64Array", "float64", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, -0.123456789121212121212], 15],
+    ["float64Array", "float64", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, -0.12345678912121212], 15],
   ])("reads float %s", (getter: string, setter: string, expected: number[], numDigits: number) => {
     const writer = new CdrWriter();
     writeArray(writer, setter as Setter, expected);
@@ -403,7 +403,7 @@ describe("limit()", () => {
     const writer = new CdrWriter({ kind: EncapsulationKind.CDR_LE });
     writer.uint8(1); // placeholder, won't be read
     const reader = new CdrReader(writer.data);
-    expect(() => reader.isPresentFlag()).toThrowError(/only supported for CDR2/i);
+    expect(() => reader.isPresentFlag()).toThrow(/only supported for CDR2/i);
   });
   it("can seek to end of the buffer", () => {
     const writer = new CdrWriter({ size: 8 });
