@@ -231,12 +231,12 @@ describe("CdrReader", () => {
     const buffer = new Uint8Array(Buffer.from("00030000017f080064000000400000000", "hex"));
     const reader = new CdrReader(buffer);
     expect(reader.emHeader()).toMatchInlineSnapshot(`
-Object {
-  "id": 100,
-  "mustUnderstand": true,
-  "objectSize": 64,
-}
-`);
+      {
+        "id": 100,
+        "mustUnderstand": true,
+        "objectSize": 64,
+      }
+    `);
   });
 
   it("takes a length when reading a string and doesn't read the sequence length again", () => {
