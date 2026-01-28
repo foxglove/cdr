@@ -31,7 +31,7 @@
   ],
   "scripts": {
     "build": "yarn clean && tsc -b",
-    "clean": "rimraf dist ./*.tsbuildinfo",
+    "clean": "rimraf dist '*.tsbuildinfo'",
     "lint:ci": "eslint --report-unused-disable-directives .",
     "lint": "eslint --report-unused-disable-directives --fix .",
     "prepack": "yarn build",
