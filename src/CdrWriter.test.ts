@@ -87,9 +87,25 @@ describe("CdrWriter", () => {
     expect(toHex(writer.data)).toEqual(tf2_msg__TFMessage);
   });
 
-  it("serializes strings using UTF-8 byte length", () => {
+  it("serializes string lengths using UTF-8 byte count plus null terminator", () => {
     const writer = new CdrWriter();
+    // "é" has a JavaScript string length of 1 but encodes to 2 UTF-8 bytes.
+    // CDR string lengths include the null terminator, so the serialized length is 3.
     writer.string("é");
+
+    expect(toHex(writer.data)).toEqual("0001000003000000c3a900");
+    expect(writer.size).toEqual(11);
+
+    const reader = new CdrReader(writer.data);
+    expect(reader.string()).toEqual("é");
+    expect(reader.decodedBytes).toEqual(writer.size);
+  });
+
+  it("serializes UTF-8 string bytes when the length is written separately", () => {
+    const writer = new CdrWriter();
+    // Covers callers that write a surrounding header/length before the string bytes.
+    writer.sequenceLength(3);
+    writer.string("é", false);
 
     expect(toHex(writer.data)).toEqual("0001000003000000c3a900");
     expect(writer.size).toEqual(11);
