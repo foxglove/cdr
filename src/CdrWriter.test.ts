@@ -87,6 +87,18 @@ describe("CdrWriter", () => {
     expect(toHex(writer.data)).toEqual(tf2_msg__TFMessage);
   });
 
+  it("serializes strings using UTF-8 byte length", () => {
+    const writer = new CdrWriter();
+    writer.string("é");
+
+    expect(toHex(writer.data)).toEqual("0001000003000000c3a900");
+    expect(writer.size).toEqual(11);
+
+    const reader = new CdrReader(writer.data);
+    expect(reader.string()).toEqual("é");
+    expect(reader.decodedBytes).toEqual(writer.size);
+  });
+
   it.each(AllCdrWriterKinds)("round trips all data types: {kind: %s}", (kindKey) => {
     const writer = new CdrWriter({ kind: EncapsulationKind[kindKey] });
     writer.int8(-1);
