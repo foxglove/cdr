@@ -12,6 +12,35 @@ export type CdrWriterOpts = {
 
 const textEncoder = new TextEncoder();
 
+/**
+ * Returns the number of bytes that would be used when encoding the string as UTF-8, effectively the
+ * same as `new TextEncoder().encode(str).length` but faster.
+ * https://jsbench.me/nzlrkwmeiq/1
+ */
+function stringLengthUtf8(str: string): number {
+  let byteLength = 0;
+  const numCodeUnits = str.length;
+  for (let i = 0; i < numCodeUnits; i++) {
+    const codeUnit = str.charCodeAt(i);
+    if (codeUnit <= 0x7f) {
+      byteLength += 1;
+    } else if (codeUnit <= 0x7ff) {
+      byteLength += 2;
+    } else if (0xd800 <= codeUnit && codeUnit <= 0xdbff) {
+      const nextCodeUnit = str.charCodeAt(i + 1);
+      if (0xdc00 <= nextCodeUnit && nextCodeUnit <= 0xdfff) {
+        byteLength += 4;
+        i++;
+      } else {
+        byteLength += 3;
+      }
+    } else {
+      byteLength += 3;
+    }
+  }
+  return byteLength;
+}
+
 export class CdrWriter {
   static DEFAULT_CAPACITY = 16;
   static BUFFER_COPY_THRESHOLD = 10;
@@ -164,13 +193,12 @@ export class CdrWriter {
 
   // writeLength optional because it could already be included in a header
   string(value: string, writeLength = true): CdrWriter {
-    const encoded = textEncoder.encode(value);
-    const strlen = encoded.byteLength;
+    const strlen = stringLengthUtf8(value);
     if (writeLength) {
       this.uint32(strlen + 1); // Add one for the null terminator
     }
     this.resizeIfNeeded(strlen + 1);
-    this.array.set(encoded, this.offset);
+    textEncoder.encodeInto(value, new Uint8Array(this.buffer, this.offset, strlen));
     this.view.setUint8(this.offset + strlen, 0);
     this.offset += strlen + 1;
     return this;
