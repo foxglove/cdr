@@ -4,6 +4,7 @@ import { EncapsulationKind } from "./EncapsulationKind";
 
 const tf2_msg__TFMessage =
   "0001000001000000cce0d158f08cf9060a000000626173655f6c696e6b000000060000007261646172000000ae47e17a14ae0e4000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f03f";
+const textEncoder = new TextEncoder();
 
 function writeExampleMessage(writer: CdrWriter) {
   // geometry_msgs/TransformStamped[] transforms
@@ -85,6 +86,58 @@ describe("CdrWriter", () => {
     writeExampleMessage(writer);
     expect(writer.size).toEqual(100);
     expect(toHex(writer.data)).toEqual(tf2_msg__TFMessage);
+  });
+
+  it("serializes string lengths using UTF-8 byte count plus null terminator", () => {
+    const writer = new CdrWriter();
+    // "é" has a JavaScript string length of 1 but encodes to 2 UTF-8 bytes.
+    // CDR string lengths include the null terminator, so the serialized length is 3.
+    writer.string("é");
+
+    expect(toHex(writer.data)).toEqual("0001000003000000c3a900");
+    expect(writer.size).toEqual(11);
+
+    const reader = new CdrReader(writer.data);
+    expect(reader.string()).toEqual("é");
+    expect(reader.decodedBytes).toEqual(writer.size);
+  });
+
+  it("serializes UTF-8 string bytes when the length is written separately", () => {
+    const writer = new CdrWriter();
+    // Covers callers that write a surrounding header/length before the string bytes.
+    writer.sequenceLength(3);
+    writer.string("é", false);
+
+    expect(toHex(writer.data)).toEqual("0001000003000000c3a900");
+    expect(writer.size).toEqual(11);
+
+    const reader = new CdrReader(writer.data);
+    expect(reader.string()).toEqual("é");
+    expect(reader.decodedBytes).toEqual(writer.size);
+  });
+
+  it.each([
+    "abc",
+    "béta",
+    "\u007f",
+    "\u0080",
+    "\u07ff",
+    "\u0800",
+    "\ud800", // lone high surrogate
+    "\ud800x", // lone high surrogate
+    "x\udc00", // lone low surrogate
+    "\ud800\udc00", // surrogate pair, equivalent to "\u{10000}"
+    "\u{10ffff}",
+  ])("serializes string lengths that match TextEncoder byte counts", (value) => {
+    const encoded = textEncoder.encode(value);
+    const writer = new CdrWriter();
+    writer.string(value);
+
+    const data = writer.data;
+    const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+    expect(view.getUint32(4, true)).toEqual(encoded.byteLength + 1);
+    expect(Array.from(data.slice(8, 8 + encoded.byteLength))).toEqual(Array.from(encoded));
+    expect(data[8 + encoded.byteLength]).toEqual(0);
   });
 
   it.each(AllCdrWriterKinds)("round trips all data types: {kind: %s}", (kindKey) => {
